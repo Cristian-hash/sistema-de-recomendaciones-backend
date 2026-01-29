@@ -22,6 +22,27 @@ namespace ProductRecommender.Backend.Controllers
             return Ok(results);
         }
 
+        [HttpGet("seasonal")]
+        public async Task<ActionResult<IEnumerable<ProductDto>>> GetSeasonal([FromQuery] int month)
+        {
+            var results = await _recommendationService.GetSeasonalRecommendationsAsync(month);
+            return Ok(results);
+        }
+
+        [HttpGet("client/{clientId}")]
+        public async Task<ActionResult<IEnumerable<ProductDto>>> GetClientRecommendations(int clientId)
+        {
+            var results = await _recommendationService.GetClientRecommendationsAsync(clientId);
+            return Ok(results);
+        }
+
+        [HttpGet("clients/top")]
+        public async Task<ActionResult<IEnumerable<int>>> GetTopClients()
+        {
+            var results = await _recommendationService.GetTopClientsAsync();
+            return Ok(results);
+        }
+
         [HttpGet("{productId}")]
         public async Task<ActionResult<IEnumerable<ProductDto>>> GetRecommendations(int productId)
         {

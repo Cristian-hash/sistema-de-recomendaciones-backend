@@ -16,6 +16,9 @@ namespace ProductRecommender.Backend.Services
     {
         Task<IEnumerable<ProductDto>> GetRecommendationsAsync(int productId, int limit = 5);
         Task<IEnumerable<ProductDto>> SearchProductsAsync(string term, int limit = 10);
+        Task<IEnumerable<ProductDto>> GetSeasonalRecommendationsAsync(int month, int limit = 5);
+        Task<IEnumerable<ProductDto>> GetClientRecommendationsAsync(int clientId, int limit = 5);
+        Task<IEnumerable<int>> GetTopClientsAsync(int limit = 10);
     }
 
     public class RecommendationService : IRecommendationService
@@ -69,9 +72,57 @@ namespace ProductRecommender.Backend.Services
 
             if (!recommendations.Any()) return new List<ProductDto>();
 
+            return await GetProductsByIdsAsync(recommendations);
+        }
+
+        public async Task<IEnumerable<ProductDto>> GetSeasonalRecommendationsAsync(int month, int limit = 5)
+        {
+            var popularProductIds = await _context.NotasPedidoDets
+                .AsNoTracking()
+                .Include(d => d.NotaPedido)
+                .Where(d => d.NotaPedido!.Fecha.Month == month)
+                .GroupBy(d => d.ProductoId)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .Take(limit)
+                .ToListAsync();
+
+            return await GetProductsByIdsAsync(popularProductIds);
+        }
+
+        public async Task<IEnumerable<ProductDto>> GetClientRecommendationsAsync(int clientId, int limit = 5)
+        {
+            var frequentProductIds = await _context.NotasPedidoDets
+                .AsNoTracking()
+                .Include(d => d.NotaPedido)
+                .Where(d => d.NotaPedido!.DireccionClienteId == clientId)
+                .GroupBy(d => d.ProductoId)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .Take(limit)
+                .ToListAsync();
+
+            return await GetProductsByIdsAsync(frequentProductIds);
+        }
+
+        public async Task<IEnumerable<int>> GetTopClientsAsync(int limit = 10)
+        {
+            return await _context.NotasPedidoCabs
+                .AsNoTracking()
+                .GroupBy(c => c.DireccionClienteId)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .Take(limit)
+                .ToListAsync();
+        }
+
+        private async Task<IEnumerable<ProductDto>> GetProductsByIdsAsync(List<int> productIds)
+        {
+            if (!productIds.Any()) return new List<ProductDto>();
+
             return await _context.Productos
                 .AsNoTracking()
-                .Where(p => recommendations.Contains(p.Id))
+                .Where(p => productIds.Contains(p.Id))
                 .Select(p => new ProductDto
                 {
                     Id = p.Id,
