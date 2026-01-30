@@ -118,9 +118,10 @@ namespace ProductRecommender.Backend.Services
                 var orderIds = await _context.NotasPedidoDets
                     .AsNoTracking()
                     .Where(d => d.ProductoId == productId)
+                    .OrderByDescending(d => d.NotaPedidoId) // Ensure we take the MOST RECENT ones
                     .Select(d => d.NotaPedidoId)
                     .Distinct()
-                    .Take(200)
+                    .Take(50) // OPTIMIZATION: Reduced from 200 to 50 for speed
                     .ToListAsync();
 
                 if (orderIds.Any())
