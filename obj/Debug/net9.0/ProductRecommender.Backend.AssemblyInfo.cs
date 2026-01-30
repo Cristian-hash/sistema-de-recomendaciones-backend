@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ProductRecommender.Backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+220d3177faada0340d979b25b223d47c97f69bcb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e1859f68fb335a40b5e6a919353607994780c8f9")]
 [assembly: System.Reflection.AssemblyProductAttribute("ProductRecommender.Backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ProductRecommender.Backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
