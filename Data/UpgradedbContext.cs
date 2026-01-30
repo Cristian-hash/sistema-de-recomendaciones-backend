@@ -67,12 +67,48 @@ public partial class UpgradedbContext : DbContext
         {
             entity.HasKey(e => e.Id).HasName("productos_pk");
             entity.ToTable("productos", "extcs");
+
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Codigo).HasColumnName("codigo");
             entity.Property(e => e.Nombre).HasColumnName("nombre");
             entity.Property(e => e.Descripcion).HasColumnName("descripcion");
             entity.Property(e => e.EcomPrecio).HasColumnName("ecom_precio");
             entity.Property(e => e.Inactivo).HasColumnName("inactivo");
+            entity.Property(e => e.Servicio).HasColumnName("servicio");
+            
+            // Mappings restored to fix "Column does not exist" errors
+            entity.Property(e => e.CodSunat).HasColumnName("cod_sunat");
+            entity.Property(e => e.MarcaId).HasColumnName("marca_id");
+            entity.Property(e => e.LineaId).HasColumnName("linea_id");
+            entity.Property(e => e.ProductoTipoId).HasColumnName("producto_tipo_id");
+            entity.Property(e => e.UnidadId).HasColumnName("unidad_id");
+            entity.Property(e => e.Modelo).HasColumnName("modelo");
+            entity.Property(e => e.Peso).HasColumnName("peso");
+            entity.Property(e => e.Divisible).HasColumnName("divisible");
+            entity.Property(e => e.DivisibleUnidadId).HasColumnName("divisible_unidad_id");
+            entity.Property(e => e.DivisibleCantidad).HasColumnName("divisible_cantidad");
+            entity.Property(e => e.ProductoOrigenId).HasColumnName("producto_origen_id");
+            entity.Property(e => e.Rotativo).HasColumnName("rotativo");
+            entity.Property(e => e.Ecommerce).HasColumnName("ecommerce");
+            entity.Property(e => e.EcommerceNombre).HasColumnName("ecommerce_nombre");
+            entity.Property(e => e.EcommerceDescrip).HasColumnName("ecommerce_descrip");
+            entity.Property(e => e.EcomImg1Nombre).HasColumnName("ecom_img1_nombre");
+            entity.Property(e => e.EcomImg2Nombre).HasColumnName("ecom_img2_nombre");
+            entity.Property(e => e.EcomImg3Nombre).HasColumnName("ecom_img3_nombre");
+            entity.Property(e => e.EcomLimite).HasColumnName("ecom_limite");
+            entity.Property(e => e.StockEcom).HasColumnName("stock_ecom");
+            entity.Property(e => e.LineaEcomId).HasColumnName("linea_ecom_id");
+            entity.Property(e => e.Promocion).HasColumnName("promocion");
+            entity.Property(e => e.Nuevo).HasColumnName("nuevo");
+            entity.Property(e => e.MarcaEcomId).HasColumnName("marca_ecom_id");
+            entity.Property(e => e.SublineaEcomId).HasColumnName("sublinea_ecom_id");
+            entity.Property(e => e.Regalo).HasColumnName("regalo");
+            entity.Property(e => e.Creado).HasColumnName("creado");
+            entity.Property(e => e.CreadoPor).HasColumnName("creado_por");
+            entity.Property(e => e.CreadoIp).HasColumnName("creado_ip");
+            entity.Property(e => e.Editado).HasColumnName("editado");
+            entity.Property(e => e.EditadoPor).HasColumnName("editado_por");
+            entity.Property(e => e.EditadoIp).HasColumnName("editado_ip");
         });
 
         modelBuilder.HasSequence("actividades_vendedor_id_seq", "actvd");
