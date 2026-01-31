@@ -39,6 +39,8 @@ namespace ProductRecommender.Backend.Services
         {
             if (string.IsNullOrWhiteSpace(term)) return new List<ProductDto>();
 
+            term = term.Trim(); // FIX: Handle "mouse " vs "mouse" equality
+
             // 1. Buscamos los productos básicos por nombre/código
             var productsRaw = await _context.Productos
                 .AsNoTracking()
