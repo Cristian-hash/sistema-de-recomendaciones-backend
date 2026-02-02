@@ -13,6 +13,7 @@ namespace ProductRecommender.Backend.Services
         public string? Razon { get; set; } 
         public int? Stock { get; set; } // New
         public string? Almacen { get; set; } // New
+        public List<string> Features { get; set; } = new List<string>(); // New: Extracted features
     }
 
     public interface IRecommendationService
@@ -48,7 +49,7 @@ namespace ProductRecommender.Backend.Services
                 .Take(limit)
                 .Select(p => new 
                 {
-                    p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom
+                    p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom, p.EcommerceDescrip
                 })
                 .ToListAsync();
 
@@ -77,6 +78,13 @@ namespace ProductRecommender.Backend.Services
                    else if (storeSelector == 1) almacenName = "RIVERO";
                    else almacenName = "CUZCO";
 
+                   // EXTRACT FEATURES
+                   var features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "");
+                   if (features.Count == 0) 
+                   {
+                       features = GenerateMockFeatures(p.Nombre);
+                   }
+
                    products.Add(new ProductDto {
                        Id = p.Id,
                        Codigo = p.Codigo,
@@ -84,7 +92,8 @@ namespace ProductRecommender.Backend.Services
                        Descripcion = p.Descripcion,
                        EcomPrecio = price,
                        Stock = stock,
-                       Almacen = almacenName
+                       Almacen = almacenName,
+                       Features = features
                    });
                }
             }
@@ -256,6 +265,13 @@ namespace ProductRecommender.Backend.Services
                     else if (storeSelector == 1) almacenName = "RIVERO";
                     else almacenName = "CUZCO";
 
+                    // EXTRACT FEATURES
+                    var features = ExtractFeatures(match.EcommerceDescrip ?? match.Descripcion ?? "");
+                    if (features.Count == 0)
+                    {
+                        features = GenerateMockFeatures(match.Nombre);
+                    }
+
                     foundProducts.Add(new ProductDto
                     {
                         Id = match.Id,
@@ -265,7 +281,8 @@ namespace ProductRecommender.Backend.Services
                         EcomPrecio = price,
                         Razon = reason,
                         Stock = stock,
-                        Almacen = almacenName
+                        Almacen = almacenName,
+                        Features = features
                     });
                     
                     // Solo necesitamos 1 recomendación por "Categoría de Razón" para no saturar
@@ -330,15 +347,15 @@ namespace ProductRecommender.Backend.Services
                     .Where(p => productIds.Contains(p.Id) && !p.Servicio)
                     .Select(p => new 
                     {
-                        p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom
+                        p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom, p.EcommerceDescrip
                     })
                     .ToListAsync();
                
-                return products.Select(p => 
-                {
-                    // Fallback Simulation based on ID (deterministic) to show varied warehouses
-                    string almacenName = "Almacén Central (Web)";
-                    
+                 return products.Select(p => 
+                 {
+                     // Fallback Simulation based on ID (deterministic) to show varied warehouses
+                     string almacenName = "Almacén Central (Web)";
+                     
                    // MOCK / SIMULATION DATA
                    // Si el stock real es 0, fingimos stock para que el usuario vea la funcionalidad de Almacenes
                    int stock = (int)(p.StockEcom ?? 0); 
@@ -353,6 +370,13 @@ namespace ProductRecommender.Backend.Services
                     else if (storeSelector == 1) almacenName = "RIVERO";
                     else almacenName = "CUZCO";
 
+                    // EXTRACT FEATURES
+                    var features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "");
+                    if (features.Count == 0)
+                    {
+                        features = GenerateMockFeatures(p.Nombre);
+                    }
+
                     return new ProductDto
                     {
                         Id = p.Id,
@@ -361,7 +385,8 @@ namespace ProductRecommender.Backend.Services
                         Descripcion = p.Descripcion,
                         EcomPrecio = price,
                         Stock = stock, 
-                        Almacen = almacenName
+                        Almacen = almacenName,
+                        Features = features
                     };
                 }).ToList();
             }
@@ -394,6 +419,79 @@ namespace ProductRecommender.Backend.Services
                 if (text.Contains(term, StringComparison.OrdinalIgnoreCase)) return true;
             }
             return false;
+        }
+
+        private List<string> ExtractFeatures(string description)
+        {
+            var features = new List<string>();
+            if (string.IsNullOrWhiteSpace(description)) return features;
+
+            // Common delimiters in specs
+            var lines = description.Split(new[] { '\n', ';', '|', '•' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var line in lines)
+            {
+                var clean = line.Trim();
+                // Filter out too short or "junk" lines
+                if (clean.Length > 2 && clean.Length < 60 && !clean.StartsWith("http"))
+                {
+                    features.Add(clean);
+                }
+            }
+
+            return features.Take(5).ToList(); // Limit to 5 features
+        }
+
+        private List<string> GenerateMockFeatures(string name)
+        {
+            var features = new List<string>();
+            var upper = name.ToUpper();
+
+            if (upper.Contains("PROCESADOR") || upper.Contains("CPU") || upper.Contains("CORE") || upper.Contains("RYZEN"))
+            {
+                 if (upper.Contains("I9")) features.Add("Rendimiento Extremo: Core i9");
+                 else if (upper.Contains("I7")) features.Add("Alto Rendimiento: Core i7");
+                 else if (upper.Contains("I5")) features.Add("Rendimiento Equilibrado: Core i5");
+                 else if (upper.Contains("I3")) features.Add("Uso Básico: Core i3");
+                 else if (upper.Contains("RYZEN 9")) features.Add("Multitarea Pesada: Ryzen 9");
+                 else if (upper.Contains("RYZEN 7")) features.Add("Gaming/Streaming: Ryzen 7");
+                 else if (upper.Contains("RYZEN 5")) features.Add("Gaming Calidad/Precio: Ryzen 5");
+                 else if (upper.Contains("RYZEN 3")) features.Add("Ofimática: Ryzen 3");
+                 else features.Add("Procesador de Escritorio");
+            }
+            else if (upper.Contains("MOUSE"))
+            {
+                features.Add(upper.Contains("GAMER") ? "Sensor Óptico Gamer" : "Diseño Ergonómico");
+            }
+            else if (upper.Contains("TECLADO"))
+            {
+                features.Add(upper.Contains("MECANICO") ? "Switches Mecánicos Durables" : "Escritura Silenciosa");
+            }
+            else if (upper.Contains("MONITOR") || upper.Contains("PANTALLA"))
+            {
+                if (upper.Contains("144HZ") || upper.Contains("165HZ")) features.Add("Alta Fluidez Gaming");
+                else if (upper.Contains("IPS")) features.Add("Colores Vivos (IPS)");
+                else if (upper.Contains("4K")) features.Add("Ultra Alta Definición");
+                else features.Add("Pantalla Nítida");
+            }
+            else if (upper.Contains("RAM") || upper.Contains("DDR"))
+            {
+                 if (upper.Contains("16GB")) features.Add("Multitarea Fluida (16GB)");
+                 else if (upper.Contains("8GB")) features.Add("Estándar Actual (8GB)");
+                 else if (upper.Contains("32GB")) features.Add("Edición y Render (32GB)");
+                 else features.Add("Memoria de alta velocidad");
+            }
+            else if (upper.Contains("SSD") || upper.Contains("DISK") || upper.Contains("SOLIDO"))
+            {
+                features.Add("Carga Rápida de Sistema");
+            }
+            else
+            {
+                // Fallback minimalista
+                features.Add("Calidad Recomendada"); 
+            }
+
+            return features.Take(1).ToList(); // Solo 1 caracteristica
         }
     }
 }
