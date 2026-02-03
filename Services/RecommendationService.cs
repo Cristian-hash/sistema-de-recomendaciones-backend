@@ -67,7 +67,7 @@ namespace ProductRecommender.Backend.Services
             
             await EnrichProductsWithStockAsync(productsDtos);
             
-            return productsDtos;
+            return productsDtos.OrderByDescending(p => p.Stock).ThenByDescending(p => p.EcomPrecio).ToList();
         }
 
         public async Task<IEnumerable<ProductDto>> GetRecommendationsAsync(int productId, int limit = 5)
@@ -139,7 +139,7 @@ namespace ProductRecommender.Backend.Services
                 Console.WriteLine($"Error calculating stats: {ex.Message}");
             }
             
-            return finalRecommendations.Take(limit);
+            return finalRecommendations.OrderByDescending(r => r.Stock).Take(limit);
         }
 
         private async Task<List<ProductDto>> GetStrategiesRecommendations(Producto product)
