@@ -11,9 +11,9 @@ namespace ProductRecommender.Backend.Services
         public string? Descripcion { get; set; }
         public decimal? EcomPrecio { get; set; }
         public string? Razon { get; set; } 
-        public int? Stock { get; set; } // New
-        public string? Almacen { get; set; } // New
-        public List<string> Features { get; set; } = new List<string>(); // New: Extracted features
+        public int? Stock { get; set; } 
+        public string? Almacen { get; set; } 
+        public List<string> Features { get; set; } = new List<string>(); 
     }
 
     public interface IRecommendationService
@@ -40,7 +40,7 @@ namespace ProductRecommender.Backend.Services
         {
             if (string.IsNullOrWhiteSpace(term)) return new List<ProductDto>();
 
-            term = term.Trim(); // FIX: Handle "mouse " vs "mouse" equality
+            term = term.Trim();
 
             // 1. Buscamos los productos básicos por nombre/código
             var productsRaw = await _context.Productos
@@ -53,56 +53,21 @@ namespace ProductRecommender.Backend.Services
                 })
                 .ToListAsync();
 
-            if (!productsRaw.Any()) return new List<ProductDto>();
-
-            var products = new List<ProductDto>();
-
-            // 2. Enriquecemos con Stock Real (Fallback Logic)
-            try 
+            var productsDtos = productsRaw.Select(p => new ProductDto 
             {
-               foreach(var p in productsRaw)
-               {
-                   // MOCK / SIMULATION DATA
-                   // Si el stock real es 0, fingimos stock para que el usuario vea la funcionalidad de Almacenes
-                   int stock = (int)(p.StockEcom ?? 0); 
-                   if (stock <= 0) stock = (p.Id % 15) + 3; // Mock Stock 3-17
+                Id = p.Id,
+                Codigo = p.Codigo,
+                Nombre = p.Nombre,
+                Descripcion = p.Descripcion,
+                EcomPrecio = p.EcomPrecio,
+                Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
+            }).ToList();
 
-                   // Mock Price if null
-                   decimal price = p.EcomPrecio ?? ((p.Id % 50) * 10) + 9.90m;
-
-                   string almacenName = "Almacén Central (Web)";
-                    
-                   // Simple heuristic to distribute stock for demo/fallback purposes
-                   int storeSelector = p.Id % 3;
-                   if (storeSelector == 0) almacenName = "QUIÑONES";
-                   else if (storeSelector == 1) almacenName = "RIVERO";
-                   else almacenName = "CUZCO";
-
-                   // EXTRACT FEATURES
-                   var features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "");
-                   if (features.Count == 0) 
-                   {
-                       features = GenerateMockFeatures(p.Nombre);
-                   }
-
-                   products.Add(new ProductDto {
-                       Id = p.Id,
-                       Codigo = p.Codigo,
-                       Nombre = p.Nombre,
-                       Descripcion = p.Descripcion,
-                       EcomPrecio = price,
-                       Stock = stock,
-                       Almacen = almacenName,
-                       Features = features
-                   });
-               }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error enriching search results: {ex.Message}");
-            }
+            if (!productsDtos.Any()) return new List<ProductDto>();
             
-            return products;
+            await EnrichProductsWithStockAsync(productsDtos);
+            
+            return productsDtos;
         }
 
         public async Task<IEnumerable<ProductDto>> GetRecommendationsAsync(int productId, int limit = 5)
@@ -126,25 +91,27 @@ namespace ProductRecommender.Backend.Services
                 var currentIds = finalRecommendations.Select(r => r.Id).ToList();
                 currentIds.Add(productId); // Excluir el mismo producto
 
-                var orderIds = await _context.NotasPedidoDets
+                var orderIdsNullable = await _context.NotasPedidoDets
                     .AsNoTracking()
                     .Where(d => d.ProductoId == productId)
-                    .OrderByDescending(d => d.NotaPedidoId) // Ensure we take the MOST RECENT ones
+                    .OrderByDescending(d => d.NotaPedidoId) 
                     .Select(d => d.NotaPedidoId)
                     .Distinct()
-                    .Take(50) // OPTIMIZATION: Reduced from 200 to 50 for speed
+                    .Take(50) 
                     .ToListAsync();
+
+                // FIX: Ensure no nulls and work with int to avoid "array_position(integer[], unknown)" error
+                var orderIds = orderIdsNullable.Where(id => id.HasValue).Select(id => id.Value).ToList();
 
                 if (orderIds.Any())
                 {
-                    // FIX: Traemos candidatos SIN filtrar 'currentIds' en SQL para evitar error array_position
                     var rawStats = await _context.NotasPedidoDets
                         .AsNoTracking()
-                        .Where(d => orderIds.Contains(d.NotaPedidoId)) 
+                        .Where(d => d.NotaPedidoId.HasValue && orderIds.Contains(d.NotaPedidoId.Value)) 
                         .GroupBy(d => d.ProductoId)
                         .OrderByDescending(g => g.Count())
                         .Select(g => g.Key)
-                        .Take(limit + 20) // Traemos extra para filtrar en memoria
+                        .Take(limit + 20) 
                         .ToListAsync();
 
                     // Filtrado en Memoria (C#)
@@ -183,9 +150,10 @@ namespace ProductRecommender.Backend.Services
             // 🖱️ Caso 1: Mouse
             if (ContainsAny(name, "MOUSE", "RATON"))
             {
-                recs.AddRange(await FindComplements(new[] { "PAD", "ALFOMBRILLA" }, "Para que se deslice bien y no raye la mesa"));
-                recs.AddRange(await FindComplements(new[] { "PILA", "BATERIA" }, "Si es inalámbrico, sin energía no sirve"));
-                recs.AddRange(await FindComplements(new[] { "TECLADO" }, "Si el mouse está viejo, el teclado suele estarlo también"));
+                // USER REQUEST: "sácame todos los teclados". We prioritize Keyboards and show more of them.
+                recs.AddRange(await FindComplements(new[] { "TECLADO" }, "Si el mouse está viejo, el teclado suele estarlo también", count: 3));
+                recs.AddRange(await FindComplements(new[] { "PAD", "ALFOMBRILLA" }, "Para que se deslice bien y no raye la mesa", count: 1));
+                recs.AddRange(await FindComplements(new[] { "PILA", "BATERIA" }, "Si es inalámbrico, sin energía no sirve", count: 1));
             }
             // 🖨️ Caso 2: Tinta
             else if (ContainsAny(name, "TINTA", "CARTUCHO", "TONER"))
@@ -205,8 +173,6 @@ namespace ProductRecommender.Backend.Services
             // ⚡ Caso 4: RAM o SSD (Actualización)
             else if (ContainsAny(name, "RAM", "DDR", "SSD", "SOLID", "DISCO SOLIDO"))
             {
-                 // Nota: "Servicio Técnico" debería ser un producto en la BD. Si no existe, buscamos equivalentes.
-                 // Asumiendo que existen productos de servicio o herramientas.
                 recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE TECNICO" }, "El cliente no sabe instalar, véndele el servicio"));
                 recs.AddRange(await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA PC", "AIRE COMPRIMIDO" }, "Ya que se abre la PC, se aprovecha para limpiar"));
                 recs.AddRange(await FindComplements(new[] { "SOFTWARE", "OFFICE", "WINDOWS" }, "Para que el SSD se sienta nuevo"));
@@ -235,61 +201,48 @@ namespace ProductRecommender.Backend.Services
             return recs;
         }
 
-        private async Task<List<ProductDto>> FindComplements(string[] searchTerms, string reason)
+        private async Task<List<ProductDto>> FindComplements(string[] searchTerms, string reason, int count = 1)
         {
             var foundProducts = new List<ProductDto>();
             
-            // Intentamos buscar productos que coincidan con ALGUNO de los términos
-            // Hacemos una búsqueda simple iterativa para asegurar match
-            
             foreach (var term in searchTerms)
             {
-                var match = await _context.Productos
+                // Fetch CANDIDATES first (without filtering by stock yet)
+                // We take e.g. 50 topmost expensive/relevant items to check their stock
+                var candidatesRaw = await _context.Productos
                     .AsNoTracking()
-                    .Where(p => !p.Inactivo && (p.Servicio == false || term.Contains("SERVICIO") || term.Contains("INSTALACION")) &&  // Permitir servicios solo si buscamos servicios
+                    .Where(p => !p.Inactivo && (p.Servicio == false || term.Contains("SERVICIO") || term.Contains("INSTALACION")) &&
                                 EF.Functions.ILike(p.Nombre, $"%{term}%"))
-                    .OrderByDescending(p => p.EcomPrecio)
-                    .FirstOrDefaultAsync();
-
-                if (match != null)
-                {
-                    // MOCK / SIMULATION DATA (Same as other methods)
-                    int stock = (int)(match.StockEcom ?? 0);
-                    if (stock <= 0) stock = (match.Id % 15) + 3;
-
-                    decimal price = match.EcomPrecio ?? ((match.Id % 50) * 10) + 9.90m;
-
-                    string almacenName = "Almacén Central (Web)";
-                    int storeSelector = match.Id % 3;
-                    if (storeSelector == 0) almacenName = "QUIÑONES";
-                    else if (storeSelector == 1) almacenName = "RIVERO";
-                    else almacenName = "CUZCO";
-
-                    // EXTRACT FEATURES
-                    var features = ExtractFeatures(match.EcommerceDescrip ?? match.Descripcion ?? "");
-                    if (features.Count == 0)
+                    .OrderByDescending(p => p.EcomPrecio) // Strategy: Recommend expensive/premium first
+                    .Take(50) 
+                    .Select(p => new ProductDto 
                     {
-                        features = GenerateMockFeatures(match.Nombre);
-                    }
-
-                    foundProducts.Add(new ProductDto
-                    {
-                        Id = match.Id,
-                        Codigo = match.Codigo,
-                        Nombre = match.Nombre,
-                        Descripcion = match.Descripcion,
-                        EcomPrecio = price,
+                        Id = p.Id,
+                        Codigo = p.Codigo,
+                        Nombre = p.Nombre,
+                        Descripcion = p.Descripcion,
+                        EcomPrecio = p.EcomPrecio,
                         Razon = reason,
-                        Stock = stock,
-                        Almacen = almacenName,
-                        Features = features
-                    });
+                        Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
+                    })
+                    .ToListAsync();
+
+                if (candidatesRaw.Any())
+                {
+                    // Enrich batch with stock
+                    await EnrichProductsWithStockAsync(candidatesRaw);
                     
-                    // Solo necesitamos 1 recomendación por "Categoría de Razón" para no saturar
-                    break; 
+                    // Filter ONLY those with stock > 0
+                    var available = candidatesRaw.Where(p => p.Stock > 0).Take(count).ToList();
+                    
+                    foundProducts.AddRange(available);
+                    
+                    if (foundProducts.Count >= count) break;
                 }
             }
-            return foundProducts;
+            
+            // Limit total per call just in case
+            return foundProducts.Take(count).ToList();
         }
 
         public async Task<IEnumerable<ProductDto>> GetSeasonalRecommendationsAsync(int month, int limit = 5)
@@ -337,77 +290,124 @@ namespace ProductRecommender.Backend.Services
         {
             if (!productIds.Any()) return new List<ProductDto>();
 
-            // Intentamos obtener el stock real por almacén (Quiñones > Rivero > Cuzco)
-            // NOTE: Tables for Almacen seem to have different names than guessed. 
-            // Using a safe fallback to display requested Structure until connected to real tables.
             try 
             {
-               var products = await _context.Productos
+               var productsRaw = await _context.Productos
                     .AsNoTracking()
-                    .Where(p => productIds.Contains(p.Id) && !p.Servicio)
+                    .Where(p => productIds.Contains(p.Id)) 
                     .Select(p => new 
                     {
                         p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom, p.EcommerceDescrip
                     })
                     .ToListAsync();
                
-                 return products.Select(p => 
-                 {
-                     // Fallback Simulation based on ID (deterministic) to show varied warehouses
-                     string almacenName = "Almacén Central (Web)";
-                     
-                   // MOCK / SIMULATION DATA
-                   // Si el stock real es 0, fingimos stock para que el usuario vea la funcionalidad de Almacenes
-                   int stock = (int)(p.StockEcom ?? 0); 
-                   if (stock <= 0) stock = (p.Id % 15) + 3; // Mock Stock 3-17
-
-                   // Mock Price if null
-                   decimal price = p.EcomPrecio ?? ((p.Id % 50) * 10) + 9.90m;
-                    
-                    // Simple heuristic to distribute stock for demo/fallback purposes if real table fails
-                    int storeSelector = p.Id % 3;
-                    if (storeSelector == 0) almacenName = "QUIÑONES";
-                    else if (storeSelector == 1) almacenName = "RIVERO";
-                    else almacenName = "CUZCO";
-
-                    // EXTRACT FEATURES
-                    var features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "");
-                    if (features.Count == 0)
-                    {
-                        features = GenerateMockFeatures(p.Nombre);
-                    }
-
-                    return new ProductDto
-                    {
-                        Id = p.Id,
-                        Codigo = p.Codigo,
-                        Nombre = p.Nombre,
-                        Descripcion = p.Descripcion,
-                        EcomPrecio = price,
-                        Stock = stock, 
-                        Almacen = almacenName,
-                        Features = features
-                    };
+                var productDtos = productsRaw.Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Codigo = p.Codigo,
+                    Nombre = p.Nombre,
+                    Descripcion = p.Descripcion,
+                    EcomPrecio = p.EcomPrecio,
+                    Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
                 }).ToList();
+
+                await EnrichProductsWithStockAsync(productDtos);
+
+                return productDtos;
             }
             catch (Exception ex)
             {
-                // Fallback final
-                Console.WriteLine($"Error fetching real stock: {ex.Message}");
-                 return await _context.Productos
-                    .AsNoTracking()
-                    .Where(p => productIds.Contains(p.Id) && !p.Servicio) 
-                    .Select(p => new ProductDto
-                    {
-                        Id = p.Id,
-                        Codigo = p.Codigo,
-                        Nombre = p.Nombre,
-                        Descripcion = p.Descripcion,
-                        EcomPrecio = p.EcomPrecio,
-                        Stock = p.StockEcom, 
-                        Almacen = "Almacén Web (Fallback)" 
-                    })
+                Console.WriteLine($"Error fetching products by ids: {ex.Message}");
+                return new List<ProductDto>();
+            }
+        }
+
+        private async Task EnrichProductsWithStockAsync(List<ProductDto> productsDtos)
+        {
+             if (!productsDtos.Any()) return;
+
+            var productIds = productsDtos.Select(p => p.Id).ToList();
+
+            try 
+            {
+                // A. Stock Real GLOBAL (Count Articulos)
+                var stockRealDict = await _context.Articulos
+                    .Where(a => productIds.Contains(a.ProductoId) && !a.Inactivo && a.AlmacenId != null)
+                    .GroupBy(a => a.ProductoId)
+                    .Select(g => new { g.Key, Cantidad = g.Count() })
+                    .ToDictionaryAsync(x => x.Key, x => x.Cantidad);
+                    
+                // A2. Stock Real Detallado
+                var stockRealDetalle = await _context.Articulos
+                    .Where(a => productIds.Contains(a.ProductoId) && !a.Inactivo && a.AlmacenId != null)
+                    .GroupBy(a => new { a.ProductoId, a.AlmacenId })
+                    .Select(g => new { g.Key.ProductoId, g.Key.AlmacenId, Cantidad = g.Count() })
                     .ToListAsync();
+
+                // B. Stock Comprometido GLOBAL
+                var stockComprometidoDict = await _context.NotasPedidoDets
+                    .Include(d => d.NotaPedido)
+                    .Where(d => productIds.Contains(d.ProductoId) && 
+                                !d.EntregaCompleta && 
+                                !d.NotaPedido.Anulada)
+                    .GroupBy(d => d.ProductoId)
+                    .Select(g => new { g.Key, Cantidad = g.Sum(x => x.Cantidad - (x.CantidadEntregada ?? 0)) })
+                    .ToDictionaryAsync(x => x.Key, x => x.Cantidad);
+
+                // C. Nombres de Almacenes
+                var almacenIds = stockRealDetalle.Select(s => s.AlmacenId).Distinct().OfType<int>().ToList();
+                var almacenes = await _context.Almacenes
+                    .Where(a => almacenIds.Contains(a.Id))
+                    .ToDictionaryAsync(a => a.Id, a => a.Nombre);
+
+                foreach(var p in productsDtos)
+                {
+                    if (p.Features.Count == 0 && !string.IsNullOrEmpty(p.Nombre)) p.Features = GenerateMockFeatures(p.Nombre);
+
+                    // 1. Stock Disponible Global
+                    int real = stockRealDict.ContainsKey(p.Id) ? stockRealDict[p.Id] : 0;
+                    int comprometido = stockComprometidoDict.ContainsKey(p.Id) ? (int)stockComprometidoDict[p.Id] : 0;
+                    int disponible = real - comprometido;
+
+                    p.Stock = disponible > 0 ? disponible : 0;
+
+                    // 2. Determinar Nombre de Almacén
+                    if (p.Stock > 0)
+                    {
+                        var stocks = stockRealDetalle
+                                    .Where(s => s.ProductoId == p.Id && s.AlmacenId.HasValue)
+                                    .OrderByDescending(s => s.Cantidad)
+                                    .ToList();
+                        
+                        if (stocks.Count == 1)
+                        {
+                            if (almacenes.ContainsKey(stocks[0].AlmacenId!.Value))
+                                p.Almacen = almacenes[stocks[0].AlmacenId!.Value];
+                            else
+                                p.Almacen = "Almacén ID " + stocks[0].AlmacenId;
+                        }
+                        else if (stocks.Count > 1)
+                        {
+                            var principal = stocks.First();
+                            string nombrePrincipal = almacenes.ContainsKey(principal.AlmacenId!.Value) ? 
+                                                     almacenes[principal.AlmacenId!.Value] : "Almacén";
+                            
+                            p.Almacen = $"{nombrePrincipal} (+{stocks.Count - 1})";
+                        }
+                        else 
+                        {
+                             p.Almacen = "Disponible";
+                        }
+                    }
+                    else
+                    {
+                        p.Almacen = "Sin Stock";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error enriching stock: {ex.Message}");
             }
         }
 
@@ -421,28 +421,26 @@ namespace ProductRecommender.Backend.Services
             return false;
         }
 
-        private List<string> ExtractFeatures(string description)
+        private static List<string> ExtractFeatures(string description)
         {
             var features = new List<string>();
             if (string.IsNullOrWhiteSpace(description)) return features;
 
-            // Common delimiters in specs
             var lines = description.Split(new[] { '\n', ';', '|', '•' }, StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var line in lines)
             {
                 var clean = line.Trim();
-                // Filter out too short or "junk" lines
                 if (clean.Length > 2 && clean.Length < 60 && !clean.StartsWith("http"))
                 {
                     features.Add(clean);
                 }
             }
 
-            return features.Take(5).ToList(); // Limit to 5 features
+            return features.Take(5).ToList(); 
         }
 
-        private List<string> GenerateMockFeatures(string name)
+        private static List<string> GenerateMockFeatures(string name)
         {
             var features = new List<string>();
             var upper = name.ToUpper();
@@ -470,28 +468,20 @@ namespace ProductRecommender.Backend.Services
             else if (upper.Contains("MONITOR") || upper.Contains("PANTALLA"))
             {
                 if (upper.Contains("144HZ") || upper.Contains("165HZ")) features.Add("Alta Fluidez Gaming");
-                else if (upper.Contains("IPS")) features.Add("Colores Vivos (IPS)");
                 else if (upper.Contains("4K")) features.Add("Ultra Alta Definición");
+                else if (upper.Contains("IPS")) features.Add("Colores Vivos (IPS)");
                 else features.Add("Pantalla Nítida");
             }
-            else if (upper.Contains("RAM") || upper.Contains("DDR"))
-            {
-                 if (upper.Contains("16GB")) features.Add("Multitarea Fluida (16GB)");
-                 else if (upper.Contains("8GB")) features.Add("Estándar Actual (8GB)");
-                 else if (upper.Contains("32GB")) features.Add("Edición y Render (32GB)");
-                 else features.Add("Memoria de alta velocidad");
-            }
-            else if (upper.Contains("SSD") || upper.Contains("DISK") || upper.Contains("SOLIDO"))
+            else if (upper.Contains("SSD") || upper.Contains("DISK"))
             {
                 features.Add("Carga Rápida de Sistema");
             }
             else
             {
-                // Fallback minimalista
                 features.Add("Calidad Recomendada"); 
             }
 
-            return features.Take(1).ToList(); // Solo 1 caracteristica
+            return features.Take(1).ToList(); 
         }
     }
 }

@@ -18,6 +18,8 @@ public partial class UpgradedbContext : DbContext
     public virtual DbSet<NotasPedidoCab> NotasPedidoCabs { get; set; }
     public virtual DbSet<NotasPedidoDet> NotasPedidoDets { get; set; }
     public virtual DbSet<Producto> Productos { get; set; }
+    public virtual DbSet<Articulo> Articulos { get; set; }
+    public virtual DbSet<Almacen> Almacenes { get; set; }
 
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -50,6 +52,11 @@ public partial class UpgradedbContext : DbContext
             entity.Property(e => e.NotaPedidoId).HasColumnName("nota_pedido_id");
             entity.Property(e => e.ProductoId).HasColumnName("producto_id");
             
+            // Fix: Add mappings for Stock calculation fields
+            entity.Property(e => e.Cantidad).HasColumnName("cantidad");
+            entity.Property(e => e.CantidadEntregada).HasColumnName("cantidad_entregada");
+            entity.Property(e => e.EntregaCompleta).HasColumnName("entrega_completa");
+
             entity.HasOne(d => d.NotaPedido).WithMany(p => p.NotasPedidoDets)
                 .HasForeignKey(d => d.NotaPedidoId)
                 .HasConstraintName("notas_pedido_det_fk_notas_pedido_cab");
@@ -110,6 +117,33 @@ public partial class UpgradedbContext : DbContext
             entity.Property(e => e.Editado).HasColumnName("editado");
             entity.Property(e => e.EditadoPor).HasColumnName("editado_por");
             entity.Property(e => e.EditadoIp).HasColumnName("editado_ip");
+        });
+
+        modelBuilder.Entity<Almacen>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("almacenes_pk");
+            entity.ToTable("almacenes", "extcs");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Nombre).HasColumnName("nombre");
+            entity.Property(e => e.Inactivo).HasColumnName("inactivo"); // Matches log: alm.inactivo
+        });
+
+        modelBuilder.Entity<Articulo>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("articulos_pk");
+            entity.ToTable("articulos", "extcs");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.ProductoId).HasColumnName("producto_id");
+            entity.Property(e => e.AlmacenId).HasColumnName("almacen_id");
+            entity.Property(e => e.Inactivo).HasColumnName("inactivo");
+
+            entity.HasOne(d => d.Producto).WithMany()
+                .HasForeignKey(d => d.ProductoId)
+                .HasConstraintName("articulos_fk_productos");
+
+            entity.HasOne(d => d.Almacen).WithMany()
+                .HasForeignKey(d => d.AlmacenId)
+                .HasConstraintName("articulos_fk_almacenes");
         });
 
         modelBuilder.HasSequence("actividades_vendedor_id_seq", "actvd");

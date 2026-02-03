@@ -9,7 +9,7 @@ public partial class Almacen
 
     public string Nombre { get; set; } = null!;
 
-    public bool? Activo { get; set; }
+    public bool? Inactivo { get; set; }
 
-    public virtual ICollection<ProductoAlmacen> ProductoAlmacens { get; set; } = new List<ProductoAlmacen>();
+    // public virtual ICollection<ProductoAlmacen> ProductoAlmacens { get; set; } = new List<ProductoAlmacen>();
 }
