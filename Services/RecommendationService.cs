@@ -602,13 +602,43 @@ namespace ProductRecommender.Backend.Services
 
                 // C. Nombres de Almacenes
                 var almacenIds = stockRealDetalle.Select(s => s.AlmacenId).Distinct().OfType<int>().ToList();
-                var almacenes = await _context.Almacenes
-                    .Where(a => almacenIds.Contains(a.Id))
-                    .ToDictionaryAsync(a => a.Id, a => a.Nombre);
+        var almacenes = await _context.Almacenes
+            .Where(a => almacenIds.Contains(a.Id))
+            .ToDictionaryAsync(a => a.Id, a => a.Nombre);
 
-                foreach(var p in productsDtos)
-                {
-                    if (p.Features.Count == 0 && !string.IsNullOrEmpty(p.Nombre)) p.Features = GenerateMockFeatures(p.Nombre);
+        // D. Enrich Prices (Fallback to Last Sale Price)
+        var productsWithNoPrice = productsDtos.Where(p => p.EcomPrecio == null || p.EcomPrecio <= 0).ToList();
+        var lastPrices = new Dictionary<int, decimal>();
+
+        if (productsWithNoPrice.Any())
+        {
+            var noPriceIds = productsWithNoPrice.Select(p => p.Id).ToList();
+            
+            var priceData = await _context.NotasPedidoDets
+                .Where(d => noPriceIds.Contains(d.ProductoId) && d.PrecioUnitarioVenta != null && d.PrecioUnitarioVenta > 0)
+                .GroupBy(d => d.ProductoId)
+                .Select(g => new { 
+                    ProductoId = g.Key, 
+                    // Get the price from the most recent order detail ID (proxy for time)
+                    Price = g.OrderByDescending(x => x.Id).Select(x => x.PrecioUnitarioVenta).FirstOrDefault() 
+                })
+                .ToListAsync();
+
+            foreach(var item in priceData)
+            {
+                if (item.Price.HasValue) lastPrices[item.ProductoId] = item.Price.Value;
+            }
+        }
+
+        foreach(var p in productsDtos)
+        {
+            if (p.Features.Count == 0 && !string.IsNullOrEmpty(p.Nombre)) p.Features = GenerateMockFeatures(p.Nombre);
+
+            // 0. Price Fallback
+            if ((p.EcomPrecio == null || p.EcomPrecio <= 0) && lastPrices.ContainsKey(p.Id))
+            {
+                p.EcomPrecio = lastPrices[p.Id];
+            }
 
                     // 1. Stock Disponible Global
                     int real = stockRealDict.ContainsKey(p.Id) ? stockRealDict[p.Id] : 0;

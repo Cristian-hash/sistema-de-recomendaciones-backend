@@ -56,6 +56,8 @@ public partial class UpgradedbContext : DbContext
             entity.Property(e => e.Cantidad).HasColumnName("cantidad");
             entity.Property(e => e.CantidadEntregada).HasColumnName("cantidad_entregada");
             entity.Property(e => e.EntregaCompleta).HasColumnName("entrega_completa");
+            entity.Property(e => e.PrecioUnitarioVenta).HasColumnName("precio_unitario_venta");
+            entity.Property(e => e.PrecioUnitarioVentaReal).HasColumnName("precio_unitario_venta_real");
 
             entity.HasOne(d => d.NotaPedido).WithMany(p => p.NotasPedidoDets)
                 .HasForeignKey(d => d.NotaPedidoId)
