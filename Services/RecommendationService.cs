@@ -200,23 +200,56 @@ namespace ProductRecommender.Backend.Services
                 recs.AddRange(await FindComplements(new[] { "PARLANTE", "HEADSET", "AUDIFONO" }, "Muchos monitores no traen sonido integrado"));
                 recs.AddRange(await FindComplements(new[] { "ESTABILIZADOR" }, "Protege tu inversión de subidas de luz"));
             }
-            // ⚡ HÁBITAT 4: RAM / SSD (Técnico)
-            else if (ContainsAny(name, "RAM", "DDR", "SSD", "SOLID", "DISCO SOLIDO", "NVME"))
+            // 🛒 HÁBITAT 4: RAM / SSD / DISCO INTERNO (Prioridad Técnica)
+            else if (ContainsAny(name, "RAM", "DDR", "DIMM", "SODIMM"))
             {
-                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE TECNICO" }, "Instalación profesional garantizada"));
-                recs.AddRange(await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA PC" }, "Limpieza interna preventiva"));
-                recs.AddRange(await FindComplements(new[] { "SOFTWARE", "OFFICE", "WINDOWS", "FORMATEO" }, "Para que el equipo se sienta como nuevo"));
-                // FIX: "CASE" was matching PC Cases for Laptops. Changed to "ENCLOSURE"
+                // RAM Ecosistema
+                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE TECNICO" }, "El cliente no sabe colocarla correctamente (Evita errores)"));
+                recs.AddRange(await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA PC", "AIRE COMPRIMIDO" }, "Ya que se abre la PC, limpieza preventiva"));
+                recs.AddRange(await FindComplements(new[] { "PASTA TERMICA" }, "Baja temperatura al procesador (aprovechando apertura)"));
+                recs.AddRange(await FindComplements(new[] { "DIAGNOSTICO" }, "Evita errores por incompatibilidad de velocidad/tipo"));
+            }
+            else if (ContainsAny(name, "SSD", "SOLID", "SOLIDO", "NVME", "M.2", "DISCO DURO", "HDD"))
+            {
+                // SSD Ecosistema
+                recs.AddRange(await FindComplements(new[] { "CLONACION", "MIGRACION" }, "No pierde su sistema ni archivos"));
+                recs.AddRange(await FindComplements(new[] { "FORMATEO", "INSTALACION WINDOWS" }, "Arranque rápido y sistema limpio"));
+                recs.AddRange(await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA PC" }, "Aprovecha la apertura del equipo"));
+                recs.AddRange(await FindComplements(new[] { "CABLE SATA", "ADAPTADOR" }, "Necesario para compatibilidad de conexión"));
                 recs.AddRange(await FindComplements(new[] { "ENCLOSURE", "COFRE", "CADDY" }, "Convierte el disco antiguo en uno externo portátil"));
             }
+            // 🧠 HÁBITAT 11: PROCESADOR (CPU)
+            else if (ContainsAny(name, "PROCESADOR", "CPU", "RYZEN", "INTEL", "CORE I", "ATHLON"))
+            {
+                recs.AddRange(await FindComplements(new[] { "PASTA TERMICA" }, "Evita sobrecalentamiento crítico"));
+                recs.AddRange(await FindComplements(new[] { "COOLER", "DISIPADOR", "LIQUIDA" }, "Disipa mejor el calor y alarga la vida útil"));
+                recs.AddRange(await FindComplements(new[] { "ACTUALIZACION BIOS", "SERVICIO" }, "Necesario para asegurar compatibilidad de placa"));
+                recs.AddRange(await FindComplements(new[] { "LIMPIEZA" }, "Mejor flujo de aire interno"));
+            }
+            // 🔌 HÁBITAT 12: FUENTE DE PODER (PSU)
+            else if (ContainsAny(name, "FUENTE", "PODER", "PSU", "WATTS", "REAL"))
+            {
+                 recs.AddRange(await FindComplements(new[] { "ESTABILIZADOR" }, "Protege de subidas de voltaje"));
+                 recs.AddRange(await FindComplements(new[] { "UPS", "NO BREAK" }, "Evita apagones bruscos que dañan la PC"));
+                 recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION" }, "Una fuente mal conectada puede quemar equipos"));
+            }
+            // 🎮 HÁBITAT 13: TARJETA DE VIDEO (GPU)
+            else if (ContainsAny(name, "TARJETA VIDEO", "TARJETA GRAFICA", "GPU", "RTX", "GTX", "RADEON"))
+            {
+                 recs.AddRange(await FindComplements(new[] { "FUENTE", "CERTIFICADA" }, "La GPU consume mucha energía, asegura potencia"));
+                 recs.AddRange(await FindComplements(new[] { "COOLER" }, "Mejora el flujo de aire del case"));
+                 recs.AddRange(await FindComplements(new[] { "PASTA TERMICA" }, "Baja temperaturas generales del sistema"));
+                 recs.AddRange(await FindComplements(new[] { "SERVICIO" }, "Instalación y drivers optimizados para rendimiento"));
+            }
+
             // 💼 HÁBITAT 5: ESTUCHE DE LAPTOP
             else if (ContainsAny(name, "ESTUCHE", "FUNDA", "MALETIN", "MOCHILA"))
             {
                 recs.AddRange(await FindComplements(new[] { "MOUSE INALAMBRICO" }, "Mayor comodidad que el touchpad"));
                 recs.AddRange(await FindComplements(new[] { "COOLER", "BASE" }, "Evita sobrecalentamiento"));
             }
-            // 📂 HÁBITAT 6: DISCO DURO EXTERNO
-            else if (ContainsAny(name, "EXTERNO", "DISCO DURO", "HDD"))
+            // 📂 HÁBITAT 6: DISCO DURO EXTERNO (Removed internal drives logic from here)
+            else if (ContainsAny(name, "EXTERNO"))
             {
                 recs.AddRange(await FindComplements(new[] { "ESTUCHE", "FUNDA" }, "Protección contra golpes (Datos seguros)"));
                 recs.AddRange(await FindComplements(new[] { "CABLE", "ADAPTADOR" }, "Conectividad asegurada"));
@@ -229,7 +262,6 @@ namespace ProductRecommender.Backend.Services
                 recs.AddRange(await FindComplements(new[] { "PAPEL", "RESMA" }, "Papel necesario para empezar a trabajar"));
                 recs.AddRange(await FindComplements(new[] { "SUPRESOR", "ESTABILIZADOR" }, "Protección eléctrica para el equipo"));
             }
-
             // 🔌 HÁBITAT 8: CONECTIVIDAD Y CABLES (Hubs, Adaptadores)
             else if (ContainsAny(name, "HUB", "ADAPTADOR", "CONVERTIDOR", "EXTENSION USB"))
             {
@@ -237,7 +269,7 @@ namespace ProductRecommender.Backend.Services
                 recs.AddRange(await FindComplements(new[] { "CINTILLO", "VELCRO", "ORGANIZADOR" }, "Mantén tus cables ordenados"));
             }
             // 🔋 HÁBITAT 9: ENERGÍA (Cargadores, Cables de Poder, UPS)
-            else if (ContainsAny(name, "CARGADOR", "FUENTE", "CABLE PODER", "UPS", "BATERIA PORTATIL"))
+            else if (ContainsAny(name, "CARGADOR", "FUENTE", "CABLE PODER", "BATERIA PORTATIL"))
             {
                 recs.AddRange(await FindComplements(new[] { "SUPRESOR", "PICO" }, "Protección esencial contra fluctuaciones eléctricas"));
                 recs.AddRange(await FindComplements(new[] { "ADAPTADOR ENCHUFE" }, "Compatibilidad con tomas de corriente"));
@@ -287,6 +319,40 @@ namespace ProductRecommender.Backend.Services
                 if (rec.Contains("COOLER") || rec.Contains("BASE")) return "Evita sobrecalentamiento en sesiones largas";
                 if (rec.Contains("ANTIVIRUS") || rec.Contains("LICENCIA")) return "Seguridad y software esencial desde el primer día";
                 if (rec.Contains("AUDIFONO") || rec.Contains("HEADSET")) return "Para videollamadas con privacidad";
+            }
+
+            // 💾 COMPONENTES INTERNOS (RAM/SSD)
+            if (main.Contains("RAM") || main.Contains("DDR") || main.Contains("SSD") || main.Contains("SOLID") || main.Contains("NVME"))
+            {
+                if (rec.Contains("SERVICIO") || rec.Contains("INSTALACION")) return "El cliente no sabe colocarla correctamente (Evita errores)";
+                if (rec.Contains("CLONACION") || rec.Contains("MIGRACION")) return "No pierde su sistema ni archivos";
+                if (rec.Contains("MANTENIMIENTO") || rec.Contains("LIMPIEZA") || rec.Contains("AIRE")) return "Ya que se abre la PC, se aprovecha para limpiar";
+                if (rec.Contains("PASTA")) return "Baja temperatura al procesador (aprovechando apertura)";
+                if (rec.Contains("DIAGNOSTICO")) return "Evita errores por incompatibilidad de velocidad/tipo";
+                if (rec.Contains("FORMATEO") || rec.Contains("WINDOWS")) return "Arranque rápido y sistema limpio";
+            }
+
+             // 🧠 PROCESADOR
+            if (main.Contains("PROCESADOR") || main.Contains("CPU"))
+            {
+                if (rec.Contains("PASTA")) return "Evita sobrecalentamiento crítico";
+                if (rec.Contains("COOLER") || rec.Contains("DISIPADOR")) return "Disipa mejor el calor y alarga la vida útil";
+                if (rec.Contains("BIOS")) return "Para compatibilidad";
+            }
+
+            // 🔌 FUENTE DE PODER
+            if ((main.Contains("FUENTE") && main.Contains("PODER")) || main.Contains("PSU"))
+            {
+                if (rec.Contains("ESTABILIZADOR")) return "Protege de subidas de voltaje";
+                if (rec.Contains("UPS")) return "Evita apagones bruscos";
+                if (rec.Contains("SERVICIO")) return "Mal conectada quema equipos";
+            }
+
+            // 🎮 TARJETA DE VIDEO
+            if (main.Contains("TARJETA") || main.Contains("GPU"))
+            {
+                if (rec.Contains("FUENTE")) return "La GPU consume mucha energía (Requerido)";
+                if (rec.Contains("COOLER")) return "Evita sobrecalentamiento";
             }
 
             // 🖥️ MONITOR
