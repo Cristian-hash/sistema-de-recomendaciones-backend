@@ -248,6 +248,13 @@ namespace ProductRecommender.Backend.Services
                 recs.AddRange(await FindComplements(new[] { "CONECTOR", "RJ45" }, "Insumos necesarios para el cableado"));
                 recs.AddRange(await FindComplements(new[] { "SWITCH", "ROUTER" }, "Expande tu red si necesitas más puntos"));
             }
+            // 🎧 HÁBITAT 11: AUDIO / HEADSET
+            else if (ContainsAny(name, "HEADSET", "AUDIFONO", "AURICULAR", "MICROFONO"))
+            {
+                recs.AddRange(await FindComplements(new[] { "SOPORTE", "STAND" }, "Cuida tus audífonos y mantén el orden del escritorio"));
+                recs.AddRange(await FindComplements(new[] { "ADAPTADOR AUDIO", "SPLITTER", "CABLE" }, "Mayor compatibilidad con PC y consolas"));
+                recs.AddRange(await FindComplements(new[] { "CAMARA", "WEBCAM" }, "Completa tu setup de comunicación/streaming"));
+            }
 
             return recs;
         }
@@ -273,7 +280,7 @@ namespace ProductRecommender.Backend.Services
             }
             
             // 💻 PORTÁTILES
-            if (main.Contains("LAPTOP") || main.Contains("NOTEBOOK") || main.Contains("NB"))
+            if (main.Contains("LAPTOP") || main.Contains("NOTEBOOK") || main.Contains("NB") || main.Contains("NB "))
             {
                 if (rec.Contains("MOCHILA") || rec.Contains("FUNDA") || rec.Contains("MALETIN")) return "Protege tu inversión de golpes y caídas";
                 if (rec.Contains("MOUSE")) return "Incrementa tu productividad evitando el touchpad";
@@ -299,6 +306,14 @@ namespace ProductRecommender.Backend.Services
                 if (rec.Contains("CABLE") && rec.Contains("USB")) return "Verifica si la caja incluye el cable de conexión";
             }
 
+            // 🎧 AUDIO / HEADSET
+            if (main.Contains("HEADSET") || main.Contains("AUDIFONO") || main.Contains("AURICULAR"))
+            {
+                if (rec.Contains("SOPORTE") || rec.Contains("STAND")) return "Evita caídas y daños en tus audífonos";
+                if (rec.Contains("ADAPTADOR") || rec.Contains("SPLITTER")) return "Asegura la compatibilidad con todos tus dispositivos";
+                if (rec.Contains("WEBCAM") || rec.Contains("CAMARA")) return "Ideal para reuniones o streaming de calidad";
+            }
+
             // 🔌 CONECTIVIDAD / ENERGÍA
             if (main.Contains("CARGADOR") || main.Contains("FUENTE") || main.Contains("CABLE"))
             {
@@ -308,13 +323,17 @@ namespace ProductRecommender.Backend.Services
 
             // ⚡ GENÉRICOS DE MANTENIMIENTO / COMPONENTES
             if (rec.Contains("PILA") || rec.Contains("BATERIA")) return "Energía de respaldo para no quedarse a medias";
-            if (rec.Contains("USB") || rec.Contains("MEMORIA")) return "Siempre útil para respaldar información crítica";
+            
+            // FIX: Be strict about USB Storage to avoid flagging USB Mice as "backup"
+            if ((rec.Contains("USB") && (rec.Contains("MEMORIA") || rec.Contains("DRIVE") || rec.Contains("FLASH") || rec.Contains("KINGSTON") || rec.Contains("SANDISK"))) || rec.Contains("PENDRIVE")) 
+                return "Siempre útil para respaldar información crítica";
+                
             if (rec.Contains("SUPRESOR") || rec.Contains("ESTABILIZADOR")) return "Seguro de vida eléctrico para tus equipos";
             if (rec.Contains("LIMPIEZA") || rec.Contains("ALCOHOL") || rec.Contains("AIRE")) return "Mantenimiento preventivo para que luzca como nuevo";
             if (rec.Contains("PASTA TERMICA")) return "Mejora la disipación de calor del procesador";
 
             // Default más amigable
-            return "Producto complementario recomendado para tu compra";
+            return "Comúnmente llevado junto a este producto";
         }
 
         private async Task<List<ProductDto>> FindComplements(string[] searchTerms, string reason, int count = 1)
