@@ -13,6 +13,7 @@ namespace ProductRecommender.Backend.Services
         public string? Razon { get; set; } 
         public int? Stock { get; set; } 
         public string? Almacen { get; set; } 
+        public bool EsServicio { get; set; }
         public List<string> Features { get; set; } = new List<string>(); 
     }
 
@@ -49,7 +50,7 @@ namespace ProductRecommender.Backend.Services
                 .Take(limit)
                 .Select(p => new 
                 {
-                    p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom, p.EcommerceDescrip
+                    p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom, p.EcommerceDescrip, p.Servicio
                 })
                 .ToListAsync();
 
@@ -60,6 +61,7 @@ namespace ProductRecommender.Backend.Services
                 Nombre = p.Nombre,
                 Descripcion = p.Descripcion,
                 EcomPrecio = p.EcomPrecio,
+                EsServicio = p.Servicio,
                 Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
             }).ToList();
 
@@ -200,23 +202,55 @@ namespace ProductRecommender.Backend.Services
                 recs.AddRange(await FindComplements(new[] { "PARLANTE", "HEADSET", "AUDIFONO" }, "Muchos monitores no traen sonido integrado"));
                 recs.AddRange(await FindComplements(new[] { "ESTABILIZADOR" }, "Protege tu inversión de subidas de luz"));
             }
-            // 🛒 HÁBITAT 4: RAM / SSD / DISCO INTERNO (Prioridad Técnica)
-            else if (ContainsAny(name, "RAM", "DDR", "DIMM", "SODIMM"))
+            // 📂 HÁBITAT 6: ALMACENAMIENTO EXTERNO (Prioridad Portabilidad)
+            else if (ContainsAny(name, "EXTERNO", "PORTABLE", "EXT "))
             {
-                // RAM Ecosistema
-                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE TECNICO" }, "El cliente no sabe colocarla correctamente (Evita errores)"));
-                recs.AddRange(await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA PC", "AIRE COMPRIMIDO" }, "Ya que se abre la PC, limpieza preventiva"));
-                recs.AddRange(await FindComplements(new[] { "PASTA TERMICA" }, "Baja temperatura al procesador (aprovechando apertura)"));
-                recs.AddRange(await FindComplements(new[] { "DIAGNOSTICO" }, "Evita errores por incompatibilidad de velocidad/tipo"));
+                recs.AddRange(await FindComplements(new[] { "ESTUCHE", "FUNDA" }, "Protección contra golpes (Datos seguros)"));
+                recs.AddRange(await FindComplements(new[] { "CABLE USB", "ADAPTADOR" }, "Conectividad asegurada"));
+                recs.AddRange(await FindComplements(new[] { "ANTIVIRUS" }, "Evita infectar tus archivos de respaldo"));
+            }
+            // ⚡ ECO SISTEMA RAM (Estrategia solicitada)
+            else if (ContainsAny(name, "RAM", "DDR", "DIMM", "SODIMM", "MEMORIA PC", "MEMORIA NB"))
+            {
+                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE" }, "El cliente no sabe abrir su PC o laptop"));
+                
+                var mantProducts = await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA", "AIRE COMPRIMIDO" }, "Ya que se abre el equipo, se aprovecha");
+                recs.AddRange(mantProducts.Where(p => !p.Nombre.Contains("CARTUCHO") && !p.Nombre.Contains("IMPRESORA")));
+
+                recs.AddRange(await FindComplements(new[] { "PASTA TERMICA" }, "Si se mueve el procesador, hay que protegerlo"));
+                recs.AddRange(await FindComplements(new[] { "SSD", "SOLIDO" }, "Si solo aumenta RAM pero sigue con disco viejo, no sentirá todo el cambio"));
+
+                if (ContainsAny(name, "SODIMM", "NB", "LAPTOP"))
+                {
+                    recs.AddRange(await FindComplements(new[] { "COOLER", "BASE NOTEBOOK" }, "Más rendimiento = más calor"));
+                }
+                else
+                {
+                    recs.AddRange(await FindComplements(new[] { "COOLER", "DISIPADOR" }, "Más rendimiento = más calor"));
+                }
             }
             else if (ContainsAny(name, "SSD", "SOLID", "SOLIDO", "NVME", "M.2", "DISCO DURO", "HDD"))
             {
-                // SSD Ecosistema
-                recs.AddRange(await FindComplements(new[] { "CLONACION", "MIGRACION" }, "No pierde su sistema ni archivos"));
-                recs.AddRange(await FindComplements(new[] { "FORMATEO", "INSTALACION WINDOWS" }, "Arranque rápido y sistema limpio"));
-                recs.AddRange(await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA PC" }, "Aprovecha la apertura del equipo"));
-                recs.AddRange(await FindComplements(new[] { "CABLE SATA", "ADAPTADOR" }, "Necesario para compatibilidad de conexión"));
-                recs.AddRange(await FindComplements(new[] { "ENCLOSURE", "COFRE", "CADDY" }, "Convierte el disco antiguo en uno externo portátil"));
+                // ⚡ ECO SISTEMA SSD (Estrategia solicitada)
+                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE" }, "El cliente no sabe abrir la laptop"));
+                recs.AddRange(await FindComplements(new[] { "FORMATEO", "SISTEMA OPERATIVO" }, "Para que el SSD se sienta realmente rápido"));
+                
+                // Excluir mantenimientos de impresora
+                var mantProducts = await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA", "AIRE COMPRIMIDO" }, "Ya que se abre, se aprovecha");
+                recs.AddRange(mantProducts.Where(p => !p.Nombre.Contains("CARTUCHO") && !p.Nombre.Contains("IMPRESORA")));
+
+                // Disipación
+                if (ContainsAny(name, "NVME", "M.2"))
+                {
+                    recs.AddRange(await FindComplements(new[] { "DISIPADOR", "HEAT SINK", "THERMAL PAD" }, "El SSD trabaja mejor con menos calor"));
+                }
+                else
+                {
+                    recs.AddRange(await FindComplements(new[] { "COOLER", "BASE NOTEBOOK" }, "El SSD trabaja mejor con menos calor"));
+                }
+
+                // Carcasa / Enclosure
+                recs.AddRange(await FindComplements(new[] { "CASE EXTERNO", "ENCLOSURE", "COFRE", "CADDY" }, "Para usar el disco viejo como externo"));
             }
             // 🧠 HÁBITAT 11: PROCESADOR (CPU)
             else if (ContainsAny(name, "PROCESADOR", "CPU", "RYZEN", "INTEL", "CORE I", "ATHLON"))
@@ -326,10 +360,20 @@ namespace ProductRecommender.Backend.Services
             {
                 if (rec.Contains("SERVICIO") || rec.Contains("INSTALACION")) return "El cliente no sabe colocarla correctamente (Evita errores)";
                 if (rec.Contains("CLONACION") || rec.Contains("MIGRACION")) return "No pierde su sistema ni archivos";
-                if (rec.Contains("MANTENIMIENTO") || rec.Contains("LIMPIEZA") || rec.Contains("AIRE")) return "Ya que se abre la PC, se aprovecha para limpiar";
+                
+                // Mantenimiento (Excluding Cartridges)
+                if ((rec.Contains("MANTENIMIENTO") || rec.Contains("LIMPIEZA") || rec.Contains("AIRE")) && !rec.Contains("CARTUCHO")) 
+                    return "Ya que se abre la PC, se aprovecha para limpiar";
+                
                 if (rec.Contains("PASTA")) return "Baja temperatura al procesador (aprovechando apertura)";
                 if (rec.Contains("DIAGNOSTICO")) return "Evita errores por incompatibilidad de velocidad/tipo";
                 if (rec.Contains("FORMATEO") || rec.Contains("WINDOWS")) return "Arranque rápido y sistema limpio";
+                
+                if (rec.Contains("CADDY") || rec.Contains("ENCLOSURE") || rec.Contains("COFRE") || (rec.Contains("CASE") && rec.Contains("DISCO"))) 
+                    return "Convierte el disco antiguo en uno externo portátil";
+
+                if (rec.Contains("CABLE") && rec.Contains("SATA")) return "Necesario si la placa no trae cables extra";
+                if (rec.Contains("DESTORNILLADOR") || rec.Contains("HERRAMIENTAS")) return "Herramientas precisas para el cambio de disco";
             }
 
              // 🧠 PROCESADOR
@@ -411,10 +455,10 @@ namespace ProductRecommender.Backend.Services
                 // Fetch CANDIDATES first 
                 var candidatesRaw = await _context.Productos
                     .AsNoTracking()
-                    .Where(p => !p.Inactivo && (p.Servicio == false || term.Contains("SERVICIO") || term.Contains("INSTALACION")) &&
+                    .Where(p => !p.Inactivo && (p.Servicio == false || term.Contains("SERVICIO") || term.Contains("INSTALACION") || term.Contains("FORMATEO") || term.Contains("MANTENIMIENTO") || term.Contains("LIMPIEZA")) &&
                                 EF.Functions.ILike(p.Nombre, $"%{term}%"))
                     .OrderByDescending(p => p.EcomPrecio) // Strategy: Recommend expensive/premium first
-                    .Take(200) // Increased to catch cheaper items like Pads/Cables that might be pushed down
+                    .Take(300) 
                     .Select(p => new ProductDto 
                     {
                         Id = p.Id,
@@ -422,7 +466,8 @@ namespace ProductRecommender.Backend.Services
                         Nombre = p.Nombre,
                         Descripcion = p.Descripcion,
                         EcomPrecio = p.EcomPrecio,
-                        Razon = reason, // Default strategy reason
+                        Razon = reason, 
+                        EsServicio = p.Servicio,
                         Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
                     })
                     .ToListAsync();
@@ -432,8 +477,8 @@ namespace ProductRecommender.Backend.Services
                     // Enrich batch with stock
                     await EnrichProductsWithStockAsync(candidatesRaw);
                     
-                    // Filter ONLY those with stock > 0
-                    var available = candidatesRaw.Where(p => p.Stock > 0).Take(count).ToList();
+                    // Filter those with stock > 0 OR if it is a service
+                    var available = candidatesRaw.Where(p => p.Stock > 0 || p.EsServicio).Take(count).ToList();
                     
                     foundProducts.AddRange(available);
                     
@@ -497,7 +542,7 @@ namespace ProductRecommender.Backend.Services
                     .Where(p => productIds.Contains(p.Id)) 
                     .Select(p => new 
                     {
-                        p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom, p.EcommerceDescrip
+                        p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom, p.EcommerceDescrip, p.Servicio
                     })
                     .ToListAsync();
                
@@ -508,6 +553,7 @@ namespace ProductRecommender.Backend.Services
                     Nombre = p.Nombre,
                     Descripcion = p.Descripcion,
                     EcomPrecio = p.EcomPrecio,
+                    EsServicio = p.Servicio,
                     Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
                 }).ToList();
 
