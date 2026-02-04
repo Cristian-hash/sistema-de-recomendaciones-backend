@@ -123,8 +123,12 @@ namespace ProductRecommender.Backend.Services
                     if (filteredStats.Any())
                     {
                         var statProducts = await GetProductsByIdsAsync(filteredStats);
-                        // Añadimos razón genérica
-                        foreach(var p in statProducts) { p.Razon = "Frecuentemente comprado junto"; }
+                        
+                        // MEJORA: Generamos argumentos de venta inteligentes en lugar de texto genérico
+                        foreach(var p in statProducts) 
+                        { 
+                            p.Razon = GenerateSalesArgument(product.Nombre, p.Nombre); 
+                        }
                         
                         // Filtramos duplicados en memoria por si acaso (doble check)
                         var newStats = statProducts.Where(p => !finalRecommendations.Any(fr => fr.Id == p.Id))
@@ -150,55 +154,67 @@ namespace ProductRecommender.Backend.Services
             // 🖱️ Caso 1: Mouse
             if (ContainsAny(name, "MOUSE", "RATON"))
             {
-                // USER REQUEST: "sácame todos los teclados". We prioritize Keyboards and show more of them.
-                recs.AddRange(await FindComplements(new[] { "TECLADO" }, "Si el mouse está viejo, el teclado suele estarlo también", count: 3));
-                recs.AddRange(await FindComplements(new[] { "PAD", "ALFOMBRILLA" }, "Para que se deslice bien y no raye la mesa", count: 1));
-                recs.AddRange(await FindComplements(new[] { "PILA", "BATERIA" }, "Si es inalámbrico, sin energía no sirve", count: 1));
+                recs.AddRange(await FindComplements(new[] { "TECLADO" }, "El desgaste es simultáneo, asegura la renovación completa", count: 3));
+                recs.AddRange(await FindComplements(new[] { "PAD", "ALFOMBRILLA" }, "Mejora la precisión y protege el escritorio", count: 1));
+                recs.AddRange(await FindComplements(new[] { "PILA", "BATERIA" }, "Indispensable si el dispositivo es inalámbrico", count: 1));
             }
             // 🖨️ Caso 2: Tinta
             else if (ContainsAny(name, "TINTA", "CARTUCHO", "TONER"))
             {
-                recs.AddRange(await FindComplements(new[] { "PAPEL BOND", "RESMA" }, "Sin papel no hay impresión"));
-                recs.AddRange(await FindComplements(new[] { "LIMPIEZA", "KIT LIMPIEZA" }, "Evita que se tape la impresora"));
-                recs.AddRange(await FindComplements(new[] { "FOTOGRAFIC" }, "Si es tinta de calidad, puede imprimir fotos"));
+                recs.AddRange(await FindComplements(new[] { "PAPEL BOND", "RESMA" }, "El insumo básico para imprimir sin interrupciones"));
+                recs.AddRange(await FindComplements(new[] { "LIMPIEZA", "KIT LIMPIEZA" }, "Prolonga la vida útil del cabezal de impresión"));
             }
             // 🖥️ Caso 3: Monitor
             else if (ContainsAny(name, "MONITOR", "PANTALLA"))
             {
-                recs.AddRange(await FindComplements(new[] { "STAND", "SOPORTE" }, "Evita dolor de cuello (ergonomía)"));
-                recs.AddRange(await FindComplements(new[] { "CAMARA", "WEB", "WEBCAM" }, "Para videollamadas"));
-                recs.AddRange(await FindComplements(new[] { "PARLANTE", "HEADSET", "AUDIFONO" }, "Muchos monitores no traen sonido"));
-                recs.AddRange(await FindComplements(new[] { "ESTABILIZADOR" }, "Protege de subidas de luz"));
+                recs.AddRange(await FindComplements(new[] { "STAND", "SOPORTE" }, "Vital para la ergonomía y evitar dolores cervicales"));
+                recs.AddRange(await FindComplements(new[] { "CAMARA", "WEB", "WEBCAM" }, "Esencial para conferencias y videollamadas claras"));
+                recs.AddRange(await FindComplements(new[] { "ESTABILIZADOR" }, "Protege la inversión contra picos de voltaje"));
             }
-            // ⚡ Caso 4: RAM o SSD (Actualización)
-            else if (ContainsAny(name, "RAM", "DDR", "SSD", "SOLID", "DISCO SOLIDO"))
+            // ⚡ Caso 4: RAM o SSD
+            else if (ContainsAny(name, "RAM", "DDR", "SSD", "SOLID", "DISCO SOLIDO", "HDD", "DISCO DURO"))
             {
-                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE TECNICO" }, "El cliente no sabe instalar, véndele el servicio"));
-                recs.AddRange(await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA PC", "AIRE COMPRIMIDO" }, "Ya que se abre la PC, se aprovecha para limpiar"));
-                recs.AddRange(await FindComplements(new[] { "SOFTWARE", "OFFICE", "WINDOWS" }, "Para que el SSD se sienta nuevo"));
+                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE TECNICO" }, "Ofrece la instalación profesional para evitar errores"));
+                recs.AddRange(await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA PC" }, "Aprovecha la apertura del equipo para una limpieza total"));
+                recs.AddRange(await FindComplements(new[] { "CASE", "ENCLOSURE" }, "Convierte el disco antiguo en uno externo portátil"));
             }
-            // 💼 Caso 5: Estuche para Laptop / Laptop
-            else if (ContainsAny(name, "ESTUCHE", "FUNDA", "MALETIN", "MOCHILA", "LAPTOP", "NOTEBOOK"))
+            // 💼 Caso 5: Portátiles
+            else if (ContainsAny(name, "LAPTOP", "NOTEBOOK"))
             {
-                recs.AddRange(await FindComplements(new[] { "MOUSE INALAMBRICO", "MOUSE BLUETOOTH" }, "El touchpad cansa"));
-                recs.AddRange(await FindComplements(new[] { "MOCHILA" }, "Para llevar cargador y cuadernos"));
-                recs.AddRange(await FindComplements(new[] { "COOLER", "BASE" }, "Evita sobrecalentamiento"));
-            }
-            // 📂 Caso 6: Disco Duro Externo
-            else if (ContainsAny(name, "EXTERNO", "DISCO DURO", "HDD"))
-            {
-                recs.AddRange(await FindComplements(new[] { "ESTUCHE", "FUNDA" }, "Para llevarlo seguro"));
-                recs.AddRange(await FindComplements(new[] { "CABLE USB", "ADAPTADOR" }, "Para transferir rápido"));
-                recs.AddRange(await FindComplements(new[] { "ANTIVIRUS" }, "Protege los archivos"));
-            }
-            // 🖨️ Caso 7: Impresora
-            else if (ContainsAny(name, "IMPRESORA", "MULTIFUNCIONAL"))
-            {
-                recs.AddRange(await FindComplements(new[] { "TINTA", "BOTELLA" }, "Es el combustible"));
-                recs.AddRange(await FindComplements(new[] { "PAPEL", "ETIQUETA" }, "Para imprimir"));
+                recs.AddRange(await FindComplements(new[] { "MOUSE INALAMBRICO" }, "Mucho más cómodo y rápido que usar el touchpad"));
+                recs.AddRange(await FindComplements(new[] { "MOCHILA", "MALETIN", "FUNDA" }, "Protección necesaria para transportar la inversión"));
+                recs.AddRange(await FindComplements(new[] { "COOLER", "BASE" }, "Mantiene la temperatura óptima y alarga la vida útil"));
             }
 
             return recs;
+        }
+
+        private string GenerateSalesArgument(string mainProduct, string recommendedProduct)
+        {
+            var main = mainProduct.ToUpper();
+            var rec = recommendedProduct.ToUpper();
+
+            // Lógica de "Argumentos de Venta" dinámica
+            if (main.Contains("MOUSE") && rec.Contains("TECLADO")) return "El desgaste suele ser simultáneo, renuévalos juntos";
+            if (main.Contains("TECLADO") && rec.Contains("MOUSE")) return "El compañero ideal para completar el escritorio";
+            
+            if (main.Contains("LAPTOP") || main.Contains("NOTEBOOK"))
+            {
+                if (rec.Contains("MOCHILA") || rec.Contains("FUNDA")) return "Protege tu inversión de golpes y caídas al transportarla";
+                if (rec.Contains("MOUSE")) return "Incrementa tu productividad evitando el touchpad";
+                if (rec.Contains("COOLER") || rec.Contains("BASE")) return "Evita sobrecalentamiento en sesiones largas de uso";
+                if (rec.Contains("ANTIVIRUS")) return "Seguridad esencial para tus datos desde el primer día";
+            }
+
+            if (rec.Contains("PILA") || rec.Contains("BATERIA")) return "Energía de respaldo para no quedarse a medias";
+            if (rec.Contains("USB") || rec.Contains("MEMORIA")) return "Siempre útil para respaldar información crítica";
+            if (rec.Contains("SUPRESOR") || rec.Contains("ESTABILIZADOR")) return "Seguro de vida eléctrico para tus equipos";
+            if (rec.Contains("LIMPIEZA") || rec.Contains("ALCOHOL")) return "Mantenimiento preventivo para que luzca como nuevo";
+
+            if (main.Contains("IMPRESORA") && (rec.Contains("TINTA") || rec.Contains("CARTUCHO"))) return "Asegura la continuidad de impresión con repuestos a mano";
+            
+            // Default más profesional
+            return "Complemento altamente recomendado por otros clientes";
         }
 
         private async Task<List<ProductDto>> FindComplements(string[] searchTerms, string reason, int count = 1)
@@ -207,8 +223,7 @@ namespace ProductRecommender.Backend.Services
             
             foreach (var term in searchTerms)
             {
-                // Fetch CANDIDATES first (without filtering by stock yet)
-                // We take e.g. 50 topmost expensive/relevant items to check their stock
+                // Fetch CANDIDATES first 
                 var candidatesRaw = await _context.Productos
                     .AsNoTracking()
                     .Where(p => !p.Inactivo && (p.Servicio == false || term.Contains("SERVICIO") || term.Contains("INSTALACION")) &&
@@ -222,7 +237,7 @@ namespace ProductRecommender.Backend.Services
                         Nombre = p.Nombre,
                         Descripcion = p.Descripcion,
                         EcomPrecio = p.EcomPrecio,
-                        Razon = reason,
+                        Razon = reason, // Default strategy reason
                         Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
                     })
                     .ToListAsync();
@@ -241,7 +256,7 @@ namespace ProductRecommender.Backend.Services
                 }
             }
             
-            // Limit total per call just in case
+            // Limit total per call
             return foundProducts.Take(count).ToList();
         }
 
