@@ -8,15 +8,37 @@
     ".NETCoreApp,Version=v9.0": {
       "ProductRecommender.Backend/1.0.0": {
         "dependencies": {
+          "ExcelDataReader": "3.8.0",
+          "ExcelDataReader.DataSet": "3.8.0",
           "Microsoft.EntityFrameworkCore.Design": "9.0.1",
           "Microsoft.EntityFrameworkCore.Tools": "9.0.1",
           "Microsoft.ML": "5.0.0",
           "Microsoft.ML.Recommender": "0.23.0",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "9.0.2",
-          "Swashbuckle.AspNetCore": "6.6.2"
+          "Swashbuckle.AspNetCore": "6.6.2",
+          "System.Text.Encoding.CodePages": "10.0.2"
         },
         "runtime": {
           "ProductRecommender.Backend.dll": {}
+        }
+      },
+      "ExcelDataReader/3.8.0": {
+        "runtime": {
+          "lib/net8.0/ExcelDataReader.dll": {
+            "assemblyVersion": "3.8.0.0",
+            "fileVersion": "3.8.0.0"
+          }
+        }
+      },
+      "ExcelDataReader.DataSet/3.8.0": {
+        "dependencies": {
+          "ExcelDataReader": "3.8.0"
+        },
+        "runtime": {
+          "lib/net8.0/ExcelDataReader.DataSet.dll": {
+            "assemblyVersion": "3.8.0.0",
+            "fileVersion": "3.8.0.0"
+          }
         }
       },
       "Humanizer.Core/2.14.1": {
@@ -895,6 +917,22 @@
         }
       },
       "System.Runtime.CompilerServices.Unsafe/6.1.2": {},
+      "System.Text.Encoding.CodePages/10.0.2": {
+        "runtime": {
+          "lib/net9.0/System.Text.Encoding.CodePages.dll": {
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.225.61305"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net9.0/System.Text.Encoding.CodePages.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "10.0.0.0",
+            "fileVersion": "10.0.225.61305"
+          }
+        }
+      },
       "System.Text.Json/9.0.1": {},
       "System.Threading.Channels/9.0.4": {}
     }
@@ -904,6 +942,20 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "ExcelDataReader/3.8.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-kbUsldc5Fn9IKgzL2nr4VvN/mKqPqn8zGXUZpA7uL6svCA4psF+qMK519EhMvderpU4pAJoqk9DWpiSIkiZtXA==",
+      "path": "exceldatareader/3.8.0",
+      "hashPath": "exceldatareader.3.8.0.nupkg.sha512"
+    },
+    "ExcelDataReader.DataSet/3.8.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-+eQg5oinHir7ayE/rF4dedvy8J6FBDG8RDyKFQsS/VZG9ygrnNgW6U8JSlrfGfe3DxYgbVoVwYV9Hbk63JQJFQ==",
+      "path": "exceldatareader.dataset/3.8.0",
+      "hashPath": "exceldatareader.dataset.3.8.0.nupkg.sha512"
     },
     "Humanizer.Core/2.14.1": {
       "type": "package",
@@ -1289,6 +1341,13 @@
       "sha512": "sha512-2hBr6zdbIBTDE3EhK7NSVNdX58uTK6iHW/P/Axmm9sl1xoGSLqDvMtpecn226TNwHByFokYwJmt/aQQNlO5CRw==",
       "path": "system.runtime.compilerservices.unsafe/6.1.2",
       "hashPath": "system.runtime.compilerservices.unsafe.6.1.2.nupkg.sha512"
+    },
+    "System.Text.Encoding.CodePages/10.0.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-hovZmFBPhs8l3ZtVXxKqAGs3CKbkuAA7aRUTlDUU0CBmoHj2DERdwmqb52DisjmlamH3yesJEc20dqLb5JMMug==",
+      "path": "system.text.encoding.codepages/10.0.2",
+      "hashPath": "system.text.encoding.codepages.10.0.2.nupkg.sha512"
     },
     "System.Text.Json/9.0.1": {
       "type": "package",

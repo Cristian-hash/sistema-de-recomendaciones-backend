@@ -1,9 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "gcg4+bIhFA4=",
+  "dgSpecHash": "y7CNx8veX94=",
   "success": true,
   "projectFilePath": "C:\\Users\\Administrador\\Desktop\\Recomendador de Productos\\backend\\ProductRecommender.Backend.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\Administrador\\.nuget\\packages\\exceldatareader\\3.8.0\\exceldatareader.3.8.0.nupkg.sha512",
+    "C:\\Users\\Administrador\\.nuget\\packages\\exceldatareader.dataset\\3.8.0\\exceldatareader.dataset.3.8.0.nupkg.sha512",
     "C:\\Users\\Administrador\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\Administrador\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\9.0.4\\microsoft.bcl.asyncinterfaces.9.0.4.nupkg.sha512",
     "C:\\Users\\Administrador\\.nuget\\packages\\microsoft.build.framework\\17.8.3\\microsoft.build.framework.17.8.3.nupkg.sha512",
@@ -59,6 +61,7 @@
     "C:\\Users\\Administrador\\.nuget\\packages\\system.reflection.emit.lightweight\\4.7.0\\system.reflection.emit.lightweight.4.7.0.nupkg.sha512",
     "C:\\Users\\Administrador\\.nuget\\packages\\system.reflection.metadata\\7.0.0\\system.reflection.metadata.7.0.0.nupkg.sha512",
     "C:\\Users\\Administrador\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.1.2\\system.runtime.compilerservices.unsafe.6.1.2.nupkg.sha512",
+    "C:\\Users\\Administrador\\.nuget\\packages\\system.text.encoding.codepages\\10.0.2\\system.text.encoding.codepages.10.0.2.nupkg.sha512",
     "C:\\Users\\Administrador\\.nuget\\packages\\system.text.json\\9.0.1\\system.text.json.9.0.1.nupkg.sha512",
     "C:\\Users\\Administrador\\.nuget\\packages\\system.threading.channels\\9.0.4\\system.threading.channels.9.0.4.nupkg.sha512"
   ],

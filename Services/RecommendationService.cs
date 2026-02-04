@@ -151,39 +151,102 @@ namespace ProductRecommender.Backend.Services
             var recs = new List<ProductDto>();
             string name = product.Nombre;
 
-            // 🖱️ Caso 1: Mouse
-            if (ContainsAny(name, "MOUSE", "RATON"))
+            // 💻 HÁBITAT 5: LAPTOP (Seguidor Principal) - MOVIDO ARRIBA para prioridad
+            if (ContainsAny(name, "LAPTOP", "NOTEBOOK", "NB "))
             {
-                recs.AddRange(await FindComplements(new[] { "TECLADO" }, "El desgaste es simultáneo, asegura la renovación completa", count: 3));
-                recs.AddRange(await FindComplements(new[] { "PAD", "ALFOMBRILLA" }, "Mejora la precisión y protege el escritorio", count: 1));
-                recs.AddRange(await FindComplements(new[] { "PILA", "BATERIA" }, "Indispensable si el dispositivo es inalámbrico", count: 1));
+                recs.AddRange(await FindComplements(new[] { "MOUSE INALAMBRICO" }, "Mayor comodidad que el touchpad"));
+                recs.AddRange(await FindComplements(new[] { "MOCHILA", "MALETIN", "FUNDA" }, "Protección para el transporte diario"));
+                recs.AddRange(await FindComplements(new[] { "COOLER", "BASE" }, "Mejora la refrigeración en uso prolongado"));
+                // FIX: "OFFICE" keyword was matching "CASE OFFICE". Changed to "MICROSOFT", "WINDOWS", "LICENCIA"
+                recs.AddRange(await FindComplements(new[] { "LICENCIA", "MICROSOFT", "WINDOWS", "ANTIVIRUS", "KASPERSKY", "ESET" }, "Software esencial desde el primer día"));
             }
-            // 🖨️ Caso 2: Tinta
+            // 🖱️ HÁBITAT 1: MOUSE (Seguidor)
+            else if (ContainsAny(name, "MOUSE", "RATON"))
+            {
+                bool isGamer = ContainsAny(name, "GAMER", "GAMING", "RGB");
+                bool isWireless = ContainsAny(name, "INALAMBRICO", "BLUETOOTH", "WIFI", "WIRELESS");
+                bool isRechargeable = ContainsAny(name, "RECARGABLE", "BATERIA INTERNA");
+
+                if (isGamer)
+                {
+                     recs.AddRange(await FindComplements(new[] { "TECLADO GAMER", "TECLADO MECANICO" }, "Completa tu setup gaming para mejor rendimiento", count: 3));
+                     recs.AddRange(await FindComplements(new[] { "PAD GAMER", "ALFOMBRILLA GAMER" }, "Superficie de control y velocidad para tu sensor", count: 1));
+                     recs.AddRange(await FindComplements(new[] { "AUDIFONO GAMER", "HEADSET" }, "Inmersión total en tus partidas", count: 1));
+                }
+                else
+                {
+                     recs.AddRange(await FindComplements(new[] { "TECLADO" }, "Renovación conjunta: El desgaste suele ser simultáneo", count: 3));
+                     recs.AddRange(await FindComplements(new[] { "PAD", "ALFOMBRILLA" }, "Mejora el deslizamiento y protege el escritorio", count: 1));
+                }
+
+                if (isWireless && !isRechargeable)
+                {
+                    recs.AddRange(await FindComplements(new[] { "PILA", "BATERIA" }, "Energía de respaldo para no quedarte desconectado", count: 1));
+                }
+            }
+            // 🖨️ HÁBITAT 2: TINTA / TONER (Estrella)
             else if (ContainsAny(name, "TINTA", "CARTUCHO", "TONER"))
             {
-                recs.AddRange(await FindComplements(new[] { "PAPEL BOND", "RESMA" }, "El insumo básico para imprimir sin interrupciones"));
-                recs.AddRange(await FindComplements(new[] { "LIMPIEZA", "KIT LIMPIEZA" }, "Prolonga la vida útil del cabezal de impresión"));
+                // Estrategia Estrella: Fidelización y Consumo
+                recs.AddRange(await FindComplements(new[] { "PAPEL BOND", "RESMA" }, "Insumo básico para imprimir sin interrupciones"));
+                recs.AddRange(await FindComplements(new[] { "KIT LIMPIEZA", "LIMPIEZA" }, "Prolonga la vida útil del cabezal de impresión"));
+                recs.AddRange(await FindComplements(new[] { "FOTOGRAFIC" }, "Para impresiones de alta calidad"));
             }
-            // 🖥️ Caso 3: Monitor
+            // 🖥️ HÁBITAT 3: MONITOR (Lento/Intermedio)
             else if (ContainsAny(name, "MONITOR", "PANTALLA"))
             {
-                recs.AddRange(await FindComplements(new[] { "STAND", "SOPORTE" }, "Vital para la ergonomía y evitar dolores cervicales"));
-                recs.AddRange(await FindComplements(new[] { "CAMARA", "WEB", "WEBCAM" }, "Esencial para conferencias y videollamadas claras"));
-                recs.AddRange(await FindComplements(new[] { "ESTABILIZADOR" }, "Protege la inversión contra picos de voltaje"));
+                recs.AddRange(await FindComplements(new[] { "STAND", "SOPORTE" }, "Evita dolor de cuello (Ergonomía)"));
+                recs.AddRange(await FindComplements(new[] { "CAMARA", "WEB", "WEBCAM" }, "Indispensable para videollamadas claras"));
+                recs.AddRange(await FindComplements(new[] { "PARLANTE", "HEADSET", "AUDIFONO" }, "Muchos monitores no traen sonido integrado"));
+                recs.AddRange(await FindComplements(new[] { "ESTABILIZADOR" }, "Protege tu inversión de subidas de luz"));
             }
-            // ⚡ Caso 4: RAM o SSD
-            else if (ContainsAny(name, "RAM", "DDR", "SSD", "SOLID", "DISCO SOLIDO", "HDD", "DISCO DURO"))
+            // ⚡ HÁBITAT 4: RAM / SSD (Técnico)
+            else if (ContainsAny(name, "RAM", "DDR", "SSD", "SOLID", "DISCO SOLIDO", "NVME"))
             {
-                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE TECNICO" }, "Ofrece la instalación profesional para evitar errores"));
-                recs.AddRange(await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA PC" }, "Aprovecha la apertura del equipo para una limpieza total"));
-                recs.AddRange(await FindComplements(new[] { "CASE", "ENCLOSURE" }, "Convierte el disco antiguo en uno externo portátil"));
+                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE TECNICO" }, "Instalación profesional garantizada"));
+                recs.AddRange(await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA PC" }, "Limpieza interna preventiva"));
+                recs.AddRange(await FindComplements(new[] { "SOFTWARE", "OFFICE", "WINDOWS", "FORMATEO" }, "Para que el equipo se sienta como nuevo"));
+                // FIX: "CASE" was matching PC Cases for Laptops. Changed to "ENCLOSURE"
+                recs.AddRange(await FindComplements(new[] { "ENCLOSURE", "COFRE", "CADDY" }, "Convierte el disco antiguo en uno externo portátil"));
             }
-            // 💼 Caso 5: Portátiles
-            else if (ContainsAny(name, "LAPTOP", "NOTEBOOK"))
+            // 💼 HÁBITAT 5: ESTUCHE DE LAPTOP
+            else if (ContainsAny(name, "ESTUCHE", "FUNDA", "MALETIN", "MOCHILA"))
             {
-                recs.AddRange(await FindComplements(new[] { "MOUSE INALAMBRICO" }, "Mucho más cómodo y rápido que usar el touchpad"));
-                recs.AddRange(await FindComplements(new[] { "MOCHILA", "MALETIN", "FUNDA" }, "Protección necesaria para transportar la inversión"));
-                recs.AddRange(await FindComplements(new[] { "COOLER", "BASE" }, "Mantiene la temperatura óptima y alarga la vida útil"));
+                recs.AddRange(await FindComplements(new[] { "MOUSE INALAMBRICO" }, "Mayor comodidad que el touchpad"));
+                recs.AddRange(await FindComplements(new[] { "COOLER", "BASE" }, "Evita sobrecalentamiento"));
+            }
+            // 📂 HÁBITAT 6: DISCO DURO EXTERNO
+            else if (ContainsAny(name, "EXTERNO", "DISCO DURO", "HDD"))
+            {
+                recs.AddRange(await FindComplements(new[] { "ESTUCHE", "FUNDA" }, "Protección contra golpes (Datos seguros)"));
+                recs.AddRange(await FindComplements(new[] { "CABLE", "ADAPTADOR" }, "Conectividad asegurada"));
+                recs.AddRange(await FindComplements(new[] { "ANTIVIRUS" }, "Evita infectar tus archivos de respaldo"));
+            }
+            // 🖨️ HÁBITAT 7: IMPRESORA
+            else if (ContainsAny(name, "IMPRESORA", "MULTIFUNCIONAL"))
+            {
+                recs.AddRange(await FindComplements(new[] { "TINTA", "BOTELLA", "TONER" }, "Asegura la continuidad de impresión"));
+                recs.AddRange(await FindComplements(new[] { "PAPEL", "RESMA" }, "Papel necesario para empezar a trabajar"));
+                recs.AddRange(await FindComplements(new[] { "SUPRESOR", "ESTABILIZADOR" }, "Protección eléctrica para el equipo"));
+            }
+
+            // 🔌 HÁBITAT 8: CONECTIVIDAD Y CABLES (Hubs, Adaptadores)
+            else if (ContainsAny(name, "HUB", "ADAPTADOR", "CONVERTIDOR", "EXTENSION USB"))
+            {
+                recs.AddRange(await FindComplements(new[] { "CABLE", "HDMI", "USB" }, "Asegura la longitud necesaria para tu conexión"));
+                recs.AddRange(await FindComplements(new[] { "CINTILLO", "VELCRO", "ORGANIZADOR" }, "Mantén tus cables ordenados"));
+            }
+            // 🔋 HÁBITAT 9: ENERGÍA (Cargadores, Cables de Poder, UPS)
+            else if (ContainsAny(name, "CARGADOR", "FUENTE", "CABLE PODER", "UPS", "BATERIA PORTATIL"))
+            {
+                recs.AddRange(await FindComplements(new[] { "SUPRESOR", "PICO" }, "Protección esencial contra fluctuaciones eléctricas"));
+                recs.AddRange(await FindComplements(new[] { "ADAPTADOR ENCHUFE" }, "Compatibilidad con tomas de corriente"));
+            }
+            // 🌐 HÁBITAT 10: REDES (Cable UTP, Patch Cord)
+            else if (ContainsAny(name, "CABLE RED", "UTP", "PATCH CORD", "CAT5", "CAT6"))
+            {
+                recs.AddRange(await FindComplements(new[] { "CONECTOR", "RJ45" }, "Insumos necesarios para el cableado"));
+                recs.AddRange(await FindComplements(new[] { "SWITCH", "ROUTER" }, "Expande tu red si necesitas más puntos"));
             }
 
             return recs;
@@ -194,27 +257,64 @@ namespace ProductRecommender.Backend.Services
             var main = mainProduct.ToUpper();
             var rec = recommendedProduct.ToUpper();
 
-            // Lógica de "Argumentos de Venta" dinámica
-            if (main.Contains("MOUSE") && rec.Contains("TECLADO")) return "El desgaste suele ser simultáneo, renuévalos juntos";
-            if (main.Contains("TECLADO") && rec.Contains("MOUSE")) return "El compañero ideal para completar el escritorio";
-            
-            if (main.Contains("LAPTOP") || main.Contains("NOTEBOOK"))
+            // 🖱️ MOUSE
+            if (main.Contains("MOUSE") || main.Contains("RATON"))
             {
-                if (rec.Contains("MOCHILA") || rec.Contains("FUNDA")) return "Protege tu inversión de golpes y caídas al transportarla";
-                if (rec.Contains("MOUSE")) return "Incrementa tu productividad evitando el touchpad";
-                if (rec.Contains("COOLER") || rec.Contains("BASE")) return "Evita sobrecalentamiento en sesiones largas de uso";
-                if (rec.Contains("ANTIVIRUS")) return "Seguridad esencial para tus datos desde el primer día";
+                if (rec.Contains("TECLADO")) return "El desgaste suele ser simultáneo, renuévalos juntos";
+                if (rec.Contains("PAD") || rec.Contains("ALFOMBRILLA")) return "Mejora la precisión y protege el escritorio";
+                if (rec.Contains("PILA") || rec.Contains("BATERIA")) return "Energía de respaldo indispensable";
             }
 
+            // ⌨️ TECLADO
+            if (main.Contains("TECLADO"))
+            {
+                if (rec.Contains("MOUSE")) return "El compañero ideal para completar el escritorio";
+                if (rec.Contains("PAD") || rec.Contains("ALFOMBRILLA")) return "Mayor confort para tus muñecas y mouse";
+            }
+            
+            // 💻 PORTÁTILES
+            if (main.Contains("LAPTOP") || main.Contains("NOTEBOOK") || main.Contains("NB"))
+            {
+                if (rec.Contains("MOCHILA") || rec.Contains("FUNDA") || rec.Contains("MALETIN")) return "Protege tu inversión de golpes y caídas";
+                if (rec.Contains("MOUSE")) return "Incrementa tu productividad evitando el touchpad";
+                if (rec.Contains("COOLER") || rec.Contains("BASE")) return "Evita sobrecalentamiento en sesiones largas";
+                if (rec.Contains("ANTIVIRUS") || rec.Contains("LICENCIA")) return "Seguridad y software esencial desde el primer día";
+                if (rec.Contains("AUDIFONO") || rec.Contains("HEADSET")) return "Para videollamadas con privacidad";
+            }
+
+            // 🖥️ MONITOR
+            if (main.Contains("MONITOR") || main.Contains("PANTALLA"))
+            {
+                if (rec.Contains("SOPORTE") || rec.Contains("STAND") || rec.Contains("BRAZO")) return "Vital para la ergonomía y evitar dolor de cuello";
+                if (rec.Contains("CAMARA") || rec.Contains("WEB") || rec.Contains("WEBCAM")) return "Indispensable para videollamadas de calidad";
+                if (rec.Contains("ESTABILIZADOR") || rec.Contains("SUPRESOR")) return "Protege el panel contra picos de voltaje";
+                if (rec.Contains("LIMPIEZA")) return "Mantén la pantalla libre de huellas y polvo";
+            }
+
+            // 🖨️ IMPRESORA
+            if (main.Contains("IMPRESORA") || main.Contains("MULTIFUNCIONAL"))
+            {
+                if (rec.Contains("TINTA") || rec.Contains("CARTUCHO") || rec.Contains("TONER")) return "Asegura la continuidad de impresión con repuestos";
+                if (rec.Contains("PAPEL") || rec.Contains("RESMA")) return "El insumo básico para empezar a trabajar";
+                if (rec.Contains("CABLE") && rec.Contains("USB")) return "Verifica si la caja incluye el cable de conexión";
+            }
+
+            // 🔌 CONECTIVIDAD / ENERGÍA
+            if (main.Contains("CARGADOR") || main.Contains("FUENTE") || main.Contains("CABLE"))
+            {
+               if (rec.Contains("SUPRESOR") || rec.Contains("ESTABILIZADOR")) return "Protege tus equipos conectados de daños eléctricos";
+               if (rec.Contains("ORGANIZADOR") || rec.Contains("VELCRO")) return "Orden y seguridad para tu cableado";
+            }
+
+            // ⚡ GENÉRICOS DE MANTENIMIENTO / COMPONENTES
             if (rec.Contains("PILA") || rec.Contains("BATERIA")) return "Energía de respaldo para no quedarse a medias";
             if (rec.Contains("USB") || rec.Contains("MEMORIA")) return "Siempre útil para respaldar información crítica";
             if (rec.Contains("SUPRESOR") || rec.Contains("ESTABILIZADOR")) return "Seguro de vida eléctrico para tus equipos";
-            if (rec.Contains("LIMPIEZA") || rec.Contains("ALCOHOL")) return "Mantenimiento preventivo para que luzca como nuevo";
+            if (rec.Contains("LIMPIEZA") || rec.Contains("ALCOHOL") || rec.Contains("AIRE")) return "Mantenimiento preventivo para que luzca como nuevo";
+            if (rec.Contains("PASTA TERMICA")) return "Mejora la disipación de calor del procesador";
 
-            if (main.Contains("IMPRESORA") && (rec.Contains("TINTA") || rec.Contains("CARTUCHO"))) return "Asegura la continuidad de impresión con repuestos a mano";
-            
-            // Default más profesional
-            return "Complemento altamente recomendado por otros clientes";
+            // Default más amigable
+            return "Producto complementario recomendado para tu compra";
         }
 
         private async Task<List<ProductDto>> FindComplements(string[] searchTerms, string reason, int count = 1)
@@ -229,7 +329,7 @@ namespace ProductRecommender.Backend.Services
                     .Where(p => !p.Inactivo && (p.Servicio == false || term.Contains("SERVICIO") || term.Contains("INSTALACION")) &&
                                 EF.Functions.ILike(p.Nombre, $"%{term}%"))
                     .OrderByDescending(p => p.EcomPrecio) // Strategy: Recommend expensive/premium first
-                    .Take(50) 
+                    .Take(200) // Increased to catch cheaper items like Pads/Cables that might be pushed down
                     .Select(p => new ProductDto 
                     {
                         Id = p.Id,

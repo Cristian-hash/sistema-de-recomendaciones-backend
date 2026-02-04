@@ -6,6 +6,8 @@ C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\ProductRecommender.Backend.runtimeconfig.json
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\ProductRecommender.Backend.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\ProductRecommender.Backend.pdb
+C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\ExcelDataReader.dll
+C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\ExcelDataReader.DataSet.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\Humanizer.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\Microsoft.Bcl.AsyncInterfaces.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\Microsoft.Build.Locator.dll
@@ -53,6 +55,7 @@ C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\System.Composition.Runtime.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\System.Composition.TypedParts.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\System.Numerics.Tensors.dll
+C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\System.Text.Encoding.CodePages.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\cs\Microsoft.CodeAnalysis.resources.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\de\Microsoft.CodeAnalysis.resources.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\es\Microsoft.CodeAnalysis.resources.dll
@@ -144,6 +147,7 @@ C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\runtimes\win-arm64\native\MatrixFactorizationNative.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\runtimes\win-x64\native\MatrixFactorizationNative.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\runtimes\win-x86\native\MatrixFactorizationNative.dll
+C:\Users\Administrador\Desktop\Recomendador de Productos\backend\bin\Debug\net9.0\runtimes\win\lib\net9.0\System.Text.Encoding.CodePages.dll
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\obj\Debug\net9.0\ProductRecommender.Backend.csproj.AssemblyReference.cache
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\obj\Debug\net9.0\rpswa.dswa.cache.json
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\obj\Debug\net9.0\ProductRecommender.Backend.GeneratedMSBuildEditorConfig.editorconfig
