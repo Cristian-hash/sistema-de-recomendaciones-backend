@@ -19,7 +19,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAngular",
         builder =>
         {
-            builder.WithOrigins("http://localhost:4200")
+            builder.WithOrigins("http://localhost:4200", "https://recomendador.upgrade.com.pe")
                    .AllowAnyHeader()
                    .AllowAnyMethod();
         });
