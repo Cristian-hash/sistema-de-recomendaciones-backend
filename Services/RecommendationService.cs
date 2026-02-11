@@ -458,7 +458,7 @@ namespace ProductRecommender.Backend.Services
                     .Where(p => !p.Inactivo && (p.Servicio == false || term.Contains("SERVICIO") || term.Contains("INSTALACION") || term.Contains("FORMATEO") || term.Contains("MANTENIMIENTO") || term.Contains("LIMPIEZA")) &&
                                 EF.Functions.ILike(p.Nombre, $"%{term}%"))
                     .OrderByDescending(p => p.EcomPrecio) // Strategy: Recommend expensive/premium first
-                    .Take(300) 
+                    .Take(50) 
                     .Select(p => new ProductDto 
                     {
                         Id = p.Id,
@@ -578,6 +578,7 @@ namespace ProductRecommender.Backend.Services
             {
                 // A. Stock Real GLOBAL (Count Articulos)
                 var stockRealDict = await _context.Articulos
+                    .AsNoTracking()
                     .Where(a => productIds.Contains(a.ProductoId) && !a.Inactivo && a.AlmacenId != null)
                     .GroupBy(a => a.ProductoId)
                     .Select(g => new { g.Key, Cantidad = g.Count() })
@@ -585,6 +586,7 @@ namespace ProductRecommender.Backend.Services
                     
                 // A2. Stock Real Detallado
                 var stockRealDetalle = await _context.Articulos
+                    .AsNoTracking()
                     .Where(a => productIds.Contains(a.ProductoId) && !a.Inactivo && a.AlmacenId != null)
                     .GroupBy(a => new { a.ProductoId, a.AlmacenId })
                     .Select(g => new { g.Key.ProductoId, g.Key.AlmacenId, Cantidad = g.Count() })
@@ -592,6 +594,7 @@ namespace ProductRecommender.Backend.Services
 
                 // B. Stock Comprometido GLOBAL
                 var stockComprometidoDict = await _context.NotasPedidoDets
+                    .AsNoTracking()
                     .Include(d => d.NotaPedido)
                     .Where(d => productIds.Contains(d.ProductoId) && 
                                 !d.EntregaCompleta && 
@@ -603,6 +606,7 @@ namespace ProductRecommender.Backend.Services
                 // C. Nombres de Almacenes
                 var almacenIds = stockRealDetalle.Select(s => s.AlmacenId).Distinct().OfType<int>().ToList();
         var almacenes = await _context.Almacenes
+            .AsNoTracking()
             .Where(a => almacenIds.Contains(a.Id))
             .ToDictionaryAsync(a => a.Id, a => a.Nombre);
 
@@ -614,19 +618,27 @@ namespace ProductRecommender.Backend.Services
         {
             var noPriceIds = productsWithNoPrice.Select(p => p.Id).ToList();
             
-            var priceData = await _context.NotasPedidoDets
+            // OPTIMIZATION: Instead of GroupBy/OrderByDescending on the whole table, use Max(Id) to find latest sale
+            var latestSaleIds = await _context.NotasPedidoDets
+                .AsNoTracking()
                 .Where(d => noPriceIds.Contains(d.ProductoId) && d.PrecioUnitarioVenta != null && d.PrecioUnitarioVenta > 0)
                 .GroupBy(d => d.ProductoId)
-                .Select(g => new { 
-                    ProductoId = g.Key, 
-                    // Get the price from the most recent order detail ID (proxy for time)
-                    Price = g.OrderByDescending(x => x.Id).Select(x => x.PrecioUnitarioVenta).FirstOrDefault() 
-                })
+                .Select(g => g.Max(d => d.Id))
                 .ToListAsync();
 
-            foreach(var item in priceData)
+            if (latestSaleIds.Any())
             {
-                if (item.Price.HasValue) lastPrices[item.ProductoId] = item.Price.Value;
+                 var prices = await _context.NotasPedidoDets
+                    .AsNoTracking()
+                    .Where(d => latestSaleIds.Contains(d.Id))
+                    .Select(d => new { d.ProductoId, d.PrecioUnitarioVenta })
+                    .ToListAsync();
+
+                foreach(var item in prices)
+                {
+                    if (item.PrecioUnitarioVenta.HasValue) 
+                        lastPrices[item.ProductoId] = item.PrecioUnitarioVenta.Value;
+                }
             }
         }
 
