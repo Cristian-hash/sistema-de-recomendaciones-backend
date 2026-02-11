@@ -45,19 +45,37 @@ namespace ProductRecommender.Backend.Services
             if (string.IsNullOrWhiteSpace(term)) return new List<ProductDto>();
 
             term = term.Trim();
+            var searchTerms = term.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-            // 1. Buscamos los productos básicos por nombre/código
-            var productsRaw = await _context.Productos
-                .AsNoTracking()
-                .Where(p => !p.Inactivo && (EF.Functions.ILike(p.Nombre, $"%{term}%") || EF.Functions.ILike(p.Codigo, $"%{term}%")))
-                .Take(limit)
-                .Select(p => new 
-                {
-                    p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom, p.EcommerceDescrip, p.Servicio
-                })
-                .ToListAsync();
+            // 1. Code Match (High Priority)
+            // Code matches full phrase
+            var codeMatches = await _context.Productos.AsNoTracking()
+               .Where(p => !p.Inactivo && EF.Functions.ILike(p.Codigo, $"%{term}%")) 
+               .Select(p => new { p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom, p.EcommerceDescrip, p.Servicio })
+               .Take(limit)
+               .ToListAsync();
 
-            var productsDtos = productsRaw.Select(p => new ProductDto 
+            // 2. Name Match (Tokenized AND)
+            var nameQuery = _context.Productos.AsNoTracking().Where(p => !p.Inactivo);
+            foreach (var t in searchTerms)
+            {
+                string temp = t;
+                nameQuery = nameQuery.Where(p => EF.Functions.ILike(p.Nombre, $"%{temp}%"));
+            }
+            
+            var nameMatches = await nameQuery
+               .Select(p => new { p.Id, p.Codigo, p.Nombre, p.Descripcion, p.EcomPrecio, p.StockEcom, p.EcommerceDescrip, p.Servicio })
+               .Take(limit)
+               .ToListAsync();
+
+            // 3. Merge
+            var combined = codeMatches.Concat(nameMatches)
+               .GroupBy(p => p.Id)
+               .Select(g => g.First())
+               .Take(limit)
+               .ToList();
+
+            var productsDtos = combined.Select(p => new ProductDto 
             {
                 Id = p.Id,
                 Codigo = p.Codigo,
@@ -67,9 +85,8 @@ namespace ProductRecommender.Backend.Services
                 EsServicio = p.Servicio,
                 Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
             }).ToList();
-
-            if (!productsDtos.Any()) return new List<ProductDto>();
             
+            if (!productsDtos.Any()) return new List<ProductDto>();
             await EnrichProductsWithStockAsync(productsDtos);
             
             return productsDtos.OrderByDescending(p => p.Stock).ThenByDescending(p => p.EcomPrecio).ToList();
@@ -473,13 +490,29 @@ namespace ProductRecommender.Backend.Services
                 foreach (var term in searchTerms)
                 {
                     // Fetch CANDIDATES using the local context
+                    // We must fetch RAW data first because ExtractFeatures cannot be translated to SQL
                     var candidatesRaw = await context.Productos
                         .AsNoTracking()
                         .Where(p => !p.Inactivo && (p.Servicio == false || term.Contains("SERVICIO") || term.Contains("INSTALACION") || term.Contains("FORMATEO") || term.Contains("MANTENIMIENTO") || term.Contains("LIMPIEZA")) &&
                                     EF.Functions.ILike(p.Nombre, $"%{term}%"))
                         .OrderByDescending(p => p.EcomPrecio) // Strategy: Recommend expensive/premium first
-                        .Take(20) // Reduced further for initial fetch
-                        .Select(p => new ProductDto 
+                        //.Take(20) // Reduced further for initial fetch - Wait, Take should be applied before fetching
+                        .Take(20)
+                        .Select(p => new 
+                        {
+                            p.Id,
+                            p.Codigo,
+                            p.Nombre,
+                            p.Descripcion,
+                            p.EcomPrecio,
+                            p.Servicio,
+                            p.EcommerceDescrip
+                        })
+                        .ToListAsync();
+
+                    if (candidatesRaw.Any())
+                    {
+                        var mapped = candidatesRaw.Select(p => new ProductDto
                         {
                             Id = p.Id,
                             Codigo = p.Codigo,
@@ -489,13 +522,10 @@ namespace ProductRecommender.Backend.Services
                             Razon = reason, 
                             EsServicio = p.Servicio,
                             Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
-                        })
-                        .ToListAsync();
-
-                    if (candidatesRaw.Any())
-                    {
+                        });
+                        
                         // DO NOT ENRICH HERE. Just add to list.
-                        foundProducts.AddRange(candidatesRaw.Take(count * 2));
+                        foundProducts.AddRange(mapped.Take(count * 2));
                         
                         if (foundProducts.Count >= count * 3) break; // heuristic limit
                     }
