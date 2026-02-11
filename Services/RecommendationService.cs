@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProductRecommender.Backend.Models.Core;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ProductRecommender.Backend.Services
 {
@@ -30,11 +31,13 @@ namespace ProductRecommender.Backend.Services
     {
         private readonly UpgradedbContext _context;
         private readonly MLService _mlService;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
 
-        public RecommendationService(UpgradedbContext context, MLService mlService)
+        public RecommendationService(UpgradedbContext context, MLService mlService, IServiceScopeFactory serviceScopeFactory)
         {
             _context = context;
             _mlService = mlService;
+            _serviceScopeFactory = serviceScopeFactory;
         }
 
         public async Task<IEnumerable<ProductDto>> SearchProductsAsync(string term, int limit = 20)
@@ -150,19 +153,18 @@ namespace ProductRecommender.Backend.Services
 
         private async Task<List<ProductDto>> GetStrategiesRecommendations(Producto product)
         {
-            var recs = new List<ProductDto>();
+            var tasks = new List<Task<List<ProductDto>>>();
             string name = product.Nombre;
 
-            // 💻 HÁBITAT 5: LAPTOP (Seguidor Principal) - MOVIDO ARRIBA para prioridad
+            // 💻 HÁBITAT 5: LAPTOP (Seguidor Principal)
             if (ContainsAny(name, "LAPTOP", "NOTEBOOK", "NB "))
             {
-                recs.AddRange(await FindComplements(new[] { "MOUSE INALAMBRICO" }, "Mayor comodidad que el touchpad"));
-                recs.AddRange(await FindComplements(new[] { "MOCHILA", "MALETIN", "FUNDA" }, "Protección para el transporte diario"));
-                recs.AddRange(await FindComplements(new[] { "COOLER", "BASE" }, "Mejora la refrigeración en uso prolongado"));
-                // FIX: "OFFICE" keyword was matching "CASE OFFICE". Changed to "MICROSOFT", "WINDOWS", "LICENCIA"
-                recs.AddRange(await FindComplements(new[] { "LICENCIA", "MICROSOFT", "WINDOWS", "ANTIVIRUS", "KASPERSKY", "ESET" }, "Software esencial desde el primer día"));
+                tasks.Add(FindComplements(new[] { "MOUSE INALAMBRICO" }, "Mayor comodidad que el touchpad"));
+                tasks.Add(FindComplements(new[] { "MOCHILA", "MALETIN", "FUNDA" }, "Protección para el transporte diario"));
+                tasks.Add(FindComplements(new[] { "COOLER", "BASE" }, "Mejora la refrigeración en uso prolongado"));
+                tasks.Add(FindComplements(new[] { "LICENCIA", "MICROSOFT", "WINDOWS", "ANTIVIRUS", "KASPERSKY", "ESET" }, "Software esencial desde el primer día"));
             }
-            // 🖱️ HÁBITAT 1: MOUSE (Seguidor)
+            // 🖱️ HÁBITAT 1: MOUSE
             else if (ContainsAny(name, "MOUSE", "RATON"))
             {
                 bool isGamer = ContainsAny(name, "GAMER", "GAMING", "RGB");
@@ -171,158 +173,172 @@ namespace ProductRecommender.Backend.Services
 
                 if (isGamer)
                 {
-                     recs.AddRange(await FindComplements(new[] { "TECLADO GAMER", "TECLADO MECANICO" }, "Completa tu setup gaming para mejor rendimiento", count: 3));
-                     recs.AddRange(await FindComplements(new[] { "PAD GAMER", "ALFOMBRILLA GAMER" }, "Superficie de control y velocidad para tu sensor", count: 1));
-                     recs.AddRange(await FindComplements(new[] { "AUDIFONO GAMER", "HEADSET" }, "Inmersión total en tus partidas", count: 1));
+                     tasks.Add(FindComplements(new[] { "TECLADO GAMER", "TECLADO MECANICO" }, "Completa tu setup gaming para mejor rendimiento", count: 3));
+                     tasks.Add(FindComplements(new[] { "PAD GAMER", "ALFOMBRILLA GAMER" }, "Superficie de control y velocidad para tu sensor", count: 1));
+                     tasks.Add(FindComplements(new[] { "AUDIFONO GAMER", "HEADSET" }, "Inmersión total en tus partidas", count: 1));
                 }
                 else
                 {
-                     recs.AddRange(await FindComplements(new[] { "TECLADO" }, "Renovación conjunta: El desgaste suele ser simultáneo", count: 3));
-                     recs.AddRange(await FindComplements(new[] { "PAD", "ALFOMBRILLA" }, "Mejora el deslizamiento y protege el escritorio", count: 1));
+                     tasks.Add(FindComplements(new[] { "TECLADO" }, "Renovación conjunta: El desgaste suele ser simultáneo", count: 3));
+                     tasks.Add(FindComplements(new[] { "PAD", "ALFOMBRILLA" }, "Mejora el deslizamiento y protege el escritorio", count: 1));
                 }
 
                 if (isWireless && !isRechargeable)
                 {
-                    recs.AddRange(await FindComplements(new[] { "PILA", "BATERIA" }, "Energía de respaldo para no quedarte desconectado", count: 1));
+                    tasks.Add(FindComplements(new[] { "PILA", "BATERIA" }, "Energía de respaldo para no quedarte desconectado", count: 1));
                 }
             }
-            // 🖨️ HÁBITAT 2: TINTA / TONER (Estrella)
+            // 🖨️ HÁBITAT 2: TINTA / TONER
             else if (ContainsAny(name, "TINTA", "CARTUCHO", "TONER"))
             {
-                // Estrategia Estrella: Fidelización y Consumo
-                recs.AddRange(await FindComplements(new[] { "PAPEL BOND", "RESMA" }, "Insumo básico para imprimir sin interrupciones"));
-                recs.AddRange(await FindComplements(new[] { "KIT LIMPIEZA", "LIMPIEZA" }, "Prolonga la vida útil del cabezal de impresión"));
-                recs.AddRange(await FindComplements(new[] { "FOTOGRAFIC" }, "Para impresiones de alta calidad"));
+                tasks.Add(FindComplements(new[] { "PAPEL BOND", "RESMA" }, "Insumo básico para imprimir sin interrupciones"));
+                tasks.Add(FindComplements(new[] { "KIT LIMPIEZA", "LIMPIEZA" }, "Prolonga la vida útil del cabezal de impresión"));
+                tasks.Add(FindComplements(new[] { "FOTOGRAFIC" }, "Para impresiones de alta calidad"));
             }
-            // 🖥️ HÁBITAT 3: MONITOR (Lento/Intermedio)
+            // 🖥️ HÁBITAT 3: MONITOR
             else if (ContainsAny(name, "MONITOR", "PANTALLA"))
             {
-                recs.AddRange(await FindComplements(new[] { "STAND", "SOPORTE" }, "Evita dolor de cuello (Ergonomía)"));
-                recs.AddRange(await FindComplements(new[] { "CAMARA", "WEB", "WEBCAM" }, "Indispensable para videollamadas claras"));
-                recs.AddRange(await FindComplements(new[] { "PARLANTE", "HEADSET", "AUDIFONO" }, "Muchos monitores no traen sonido integrado"));
-                recs.AddRange(await FindComplements(new[] { "ESTABILIZADOR" }, "Protege tu inversión de subidas de luz"));
+                tasks.Add(FindComplements(new[] { "STAND", "SOPORTE" }, "Evita dolor de cuello (Ergonomía)"));
+                tasks.Add(FindComplements(new[] { "CAMARA", "WEB", "WEBCAM" }, "Indispensable para videollamadas claras"));
+                tasks.Add(FindComplements(new[] { "PARLANTE", "HEADSET", "AUDIFONO" }, "Muchos monitores no traen sonido integrado"));
+                tasks.Add(FindComplements(new[] { "ESTABILIZADOR" }, "Protege tu inversión de subidas de luz"));
             }
-            // 📂 HÁBITAT 6: ALMACENAMIENTO EXTERNO (Prioridad Portabilidad)
+            // 📂 HÁBITAT 6: ALMACENAMIENTO EXTERNO
             else if (ContainsAny(name, "EXTERNO", "PORTABLE", "EXT "))
             {
-                recs.AddRange(await FindComplements(new[] { "ESTUCHE", "FUNDA" }, "Protección contra golpes (Datos seguros)"));
-                recs.AddRange(await FindComplements(new[] { "CABLE USB", "ADAPTADOR" }, "Conectividad asegurada"));
-                recs.AddRange(await FindComplements(new[] { "ANTIVIRUS" }, "Evita infectar tus archivos de respaldo"));
+                tasks.Add(FindComplements(new[] { "ESTUCHE", "FUNDA" }, "Protección contra golpes (Datos seguros)"));
+                tasks.Add(FindComplements(new[] { "CABLE USB", "ADAPTADOR" }, "Conectividad asegurada"));
+                tasks.Add(FindComplements(new[] { "ANTIVIRUS" }, "Evita infectar tus archivos de respaldo"));
             }
-            // ⚡ ECO SISTEMA RAM (Estrategia solicitada)
+            // ⚡ ECO SISTEMA RAM
             else if (ContainsAny(name, "RAM", "DDR", "DIMM", "SODIMM", "MEMORIA PC", "MEMORIA NB"))
             {
-                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE" }, "El cliente no sabe abrir su PC o laptop"));
-                
-                var mantProducts = await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA", "AIRE COMPRIMIDO" }, "Ya que se abre el equipo, se aprovecha");
-                recs.AddRange(mantProducts.Where(p => !p.Nombre.Contains("CARTUCHO") && !p.Nombre.Contains("IMPRESORA")));
-
-                recs.AddRange(await FindComplements(new[] { "PASTA TERMICA" }, "Si se mueve el procesador, hay que protegerlo"));
-                recs.AddRange(await FindComplements(new[] { "SSD", "SOLIDO" }, "Si solo aumenta RAM pero sigue con disco viejo, no sentirá todo el cambio"));
+                tasks.Add(FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE" }, "El cliente no sabe abrir su PC o laptop"));
+                // Separate query for maintenance to handle "Not contains" in memory later if needed, or simple search
+                // For simplicity, we search positive terms. The exclusion happens in FindComplements logic if simple, but here we just search.
+                // We will filter names AFTER merging if needed.
+                tasks.Add(FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA", "AIRE COMPRIMIDO" }, "Ya que se abre el equipo, se aprovecha"));
+                tasks.Add(FindComplements(new[] { "PASTA TERMICA" }, "Si se mueve el procesador, hay que protegerlo"));
+                tasks.Add(FindComplements(new[] { "SSD", "SOLIDO" }, "Si solo aumenta RAM pero sigue con disco viejo, no sentirá todo el cambio"));
 
                 if (ContainsAny(name, "SODIMM", "NB", "LAPTOP"))
-                {
-                    recs.AddRange(await FindComplements(new[] { "COOLER", "BASE NOTEBOOK" }, "Más rendimiento = más calor"));
-                }
+                    tasks.Add(FindComplements(new[] { "COOLER", "BASE NOTEBOOK" }, "Más rendimiento = más calor"));
                 else
-                {
-                    recs.AddRange(await FindComplements(new[] { "COOLER", "DISIPADOR" }, "Más rendimiento = más calor"));
-                }
+                    tasks.Add(FindComplements(new[] { "COOLER", "DISIPADOR" }, "Más rendimiento = más calor"));
             }
             else if (ContainsAny(name, "SSD", "SOLID", "SOLIDO", "NVME", "M.2", "DISCO DURO", "HDD"))
             {
-                // ⚡ ECO SISTEMA SSD (Estrategia solicitada)
-                recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE" }, "El cliente no sabe abrir la laptop"));
-                recs.AddRange(await FindComplements(new[] { "FORMATEO", "SISTEMA OPERATIVO" }, "Para que el SSD se sienta realmente rápido"));
-                
-                // Excluir mantenimientos de impresora
-                var mantProducts = await FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA", "AIRE COMPRIMIDO" }, "Ya que se abre, se aprovecha");
-                recs.AddRange(mantProducts.Where(p => !p.Nombre.Contains("CARTUCHO") && !p.Nombre.Contains("IMPRESORA")));
+                tasks.Add(FindComplements(new[] { "SERVICIO", "INSTALACION", "SOPORTE" }, "El cliente no sabe abrir la laptop"));
+                tasks.Add(FindComplements(new[] { "FORMATEO", "SISTEMA OPERATIVO" }, "Para que el SSD se sienta realmente rápido"));
+                tasks.Add(FindComplements(new[] { "MANTENIMIENTO", "LIMPIEZA", "AIRE COMPRIMIDO" }, "Ya que se abre, se aprovecha"));
 
-                // Disipación
                 if (ContainsAny(name, "NVME", "M.2"))
-                {
-                    recs.AddRange(await FindComplements(new[] { "DISIPADOR", "HEAT SINK", "THERMAL PAD" }, "El SSD trabaja mejor con menos calor"));
-                }
+                    tasks.Add(FindComplements(new[] { "DISIPADOR", "HEAT SINK", "THERMAL PAD" }, "El SSD trabaja mejor con menos calor"));
                 else
-                {
-                    recs.AddRange(await FindComplements(new[] { "COOLER", "BASE NOTEBOOK" }, "El SSD trabaja mejor con menos calor"));
-                }
+                    tasks.Add(FindComplements(new[] { "COOLER", "BASE NOTEBOOK" }, "El SSD trabaja mejor con menos calor"));
 
-                // Carcasa / Enclosure
-                recs.AddRange(await FindComplements(new[] { "CASE EXTERNO", "ENCLOSURE", "COFRE", "CADDY" }, "Para usar el disco viejo como externo"));
+                tasks.Add(FindComplements(new[] { "CASE EXTERNO", "ENCLOSURE", "COFRE", "CADDY" }, "Para usar el disco viejo como externo"));
             }
-            // 🧠 HÁBITAT 11: PROCESADOR (CPU)
+            // 🧠 HÁBITAT 11: PROCESADOR
             else if (ContainsAny(name, "PROCESADOR", "CPU", "RYZEN", "INTEL", "CORE I", "ATHLON"))
             {
-                recs.AddRange(await FindComplements(new[] { "PASTA TERMICA" }, "Evita sobrecalentamiento crítico"));
-                recs.AddRange(await FindComplements(new[] { "COOLER", "DISIPADOR", "LIQUIDA" }, "Disipa mejor el calor y alarga la vida útil"));
-                recs.AddRange(await FindComplements(new[] { "ACTUALIZACION BIOS", "SERVICIO" }, "Necesario para asegurar compatibilidad de placa"));
-                recs.AddRange(await FindComplements(new[] { "LIMPIEZA" }, "Mejor flujo de aire interno"));
+                tasks.Add(FindComplements(new[] { "PASTA TERMICA" }, "Evita sobrecalentamiento crítico"));
+                tasks.Add(FindComplements(new[] { "COOLER", "DISIPADOR", "LIQUIDA" }, "Disipa mejor el calor y alarga la vida útil"));
+                tasks.Add(FindComplements(new[] { "ACTUALIZACION BIOS", "SERVICIO" }, "Necesario para asegurar compatibilidad de placa"));
+                tasks.Add(FindComplements(new[] { "LIMPIEZA" }, "Mejor flujo de aire interno"));
             }
-            // 🔌 HÁBITAT 12: FUENTE DE PODER (PSU)
+            // 🔌 HÁBITAT 12: FUENTE DE PODER
             else if (ContainsAny(name, "FUENTE", "PODER", "PSU", "WATTS", "REAL"))
             {
-                 recs.AddRange(await FindComplements(new[] { "ESTABILIZADOR" }, "Protege de subidas de voltaje"));
-                 recs.AddRange(await FindComplements(new[] { "UPS", "NO BREAK" }, "Evita apagones bruscos que dañan la PC"));
-                 recs.AddRange(await FindComplements(new[] { "SERVICIO", "INSTALACION" }, "Una fuente mal conectada puede quemar equipos"));
+                 tasks.Add(FindComplements(new[] { "ESTABILIZADOR" }, "Protege de subidas de voltaje"));
+                 tasks.Add(FindComplements(new[] { "UPS", "NO BREAK" }, "Evita apagones bruscos que dañan la PC"));
+                 tasks.Add(FindComplements(new[] { "SERVICIO", "INSTALACION" }, "Una fuente mal conectada puede quemar equipos"));
             }
-            // 🎮 HÁBITAT 13: TARJETA DE VIDEO (GPU)
+            // 🎮 HÁBITAT 13: TARJETA DE VIDEO
             else if (ContainsAny(name, "TARJETA VIDEO", "TARJETA GRAFICA", "GPU", "RTX", "GTX", "RADEON"))
             {
-                 recs.AddRange(await FindComplements(new[] { "FUENTE", "CERTIFICADA" }, "La GPU consume mucha energía, asegura potencia"));
-                 recs.AddRange(await FindComplements(new[] { "COOLER" }, "Mejora el flujo de aire del case"));
-                 recs.AddRange(await FindComplements(new[] { "PASTA TERMICA" }, "Baja temperaturas generales del sistema"));
-                 recs.AddRange(await FindComplements(new[] { "SERVICIO" }, "Instalación y drivers optimizados para rendimiento"));
+                 tasks.Add(FindComplements(new[] { "FUENTE", "CERTIFICADA" }, "La GPU consume mucha energía, asegura potencia"));
+                 tasks.Add(FindComplements(new[] { "COOLER" }, "Mejora el flujo de aire del case"));
+                 tasks.Add(FindComplements(new[] { "PASTA TERMICA" }, "Baja temperaturas generales del sistema"));
+                 tasks.Add(FindComplements(new[] { "SERVICIO" }, "Instalación y drivers optimizados para rendimiento"));
             }
-
             // 💼 HÁBITAT 5: ESTUCHE DE LAPTOP
             else if (ContainsAny(name, "ESTUCHE", "FUNDA", "MALETIN", "MOCHILA"))
             {
-                recs.AddRange(await FindComplements(new[] { "MOUSE INALAMBRICO" }, "Mayor comodidad que el touchpad"));
-                recs.AddRange(await FindComplements(new[] { "COOLER", "BASE" }, "Evita sobrecalentamiento"));
+                tasks.Add(FindComplements(new[] { "MOUSE INALAMBRICO" }, "Mayor comodidad que el touchpad"));
+                tasks.Add(FindComplements(new[] { "COOLER", "BASE" }, "Evita sobrecalentamiento"));
             }
-            // 📂 HÁBITAT 6: DISCO DURO EXTERNO (Removed internal drives logic from here)
+            // 📂 HÁBITAT 6: DISCO DURO EXTERNO
             else if (ContainsAny(name, "EXTERNO"))
             {
-                recs.AddRange(await FindComplements(new[] { "ESTUCHE", "FUNDA" }, "Protección contra golpes (Datos seguros)"));
-                recs.AddRange(await FindComplements(new[] { "CABLE", "ADAPTADOR" }, "Conectividad asegurada"));
-                recs.AddRange(await FindComplements(new[] { "ANTIVIRUS" }, "Evita infectar tus archivos de respaldo"));
+                tasks.Add(FindComplements(new[] { "ESTUCHE", "FUNDA" }, "Protección contra golpes (Datos seguros)"));
+                tasks.Add(FindComplements(new[] { "CABLE", "ADAPTADOR" }, "Conectividad asegurada"));
+                tasks.Add(FindComplements(new[] { "ANTIVIRUS" }, "Evita infectar tus archivos de respaldo"));
             }
             // 🖨️ HÁBITAT 7: IMPRESORA
             else if (ContainsAny(name, "IMPRESORA", "MULTIFUNCIONAL"))
             {
-                recs.AddRange(await FindComplements(new[] { "TINTA", "BOTELLA", "TONER" }, "Asegura la continuidad de impresión"));
-                recs.AddRange(await FindComplements(new[] { "PAPEL", "RESMA" }, "Papel necesario para empezar a trabajar"));
-                recs.AddRange(await FindComplements(new[] { "SUPRESOR", "ESTABILIZADOR" }, "Protección eléctrica para el equipo"));
+                tasks.Add(FindComplements(new[] { "TINTA", "BOTELLA", "TONER" }, "Asegura la continuidad de impresión"));
+                tasks.Add(FindComplements(new[] { "PAPEL", "RESMA" }, "Papel necesario para empezar a trabajar"));
+                tasks.Add(FindComplements(new[] { "SUPRESOR", "ESTABILIZADOR" }, "Protección eléctrica para el equipo"));
             }
-            // 🔌 HÁBITAT 8: CONECTIVIDAD Y CABLES (Hubs, Adaptadores)
+            // 🔌 HÁBITAT 8: CONECTIVIDAD Y CABLES
             else if (ContainsAny(name, "HUB", "ADAPTADOR", "CONVERTIDOR", "EXTENSION USB"))
             {
-                recs.AddRange(await FindComplements(new[] { "CABLE", "HDMI", "USB" }, "Asegura la longitud necesaria para tu conexión"));
-                recs.AddRange(await FindComplements(new[] { "CINTILLO", "VELCRO", "ORGANIZADOR" }, "Mantén tus cables ordenados"));
+                tasks.Add(FindComplements(new[] { "CABLE", "HDMI", "USB" }, "Asegura la longitud necesaria para tu conexión"));
+                tasks.Add(FindComplements(new[] { "CINTILLO", "VELCRO", "ORGANIZADOR" }, "Mantén tus cables ordenados"));
             }
-            // 🔋 HÁBITAT 9: ENERGÍA (Cargadores, Cables de Poder, UPS)
+            // 🔋 HÁBITAT 9: ENERGÍA
             else if (ContainsAny(name, "CARGADOR", "FUENTE", "CABLE PODER", "BATERIA PORTATIL"))
             {
-                recs.AddRange(await FindComplements(new[] { "SUPRESOR", "PICO" }, "Protección esencial contra fluctuaciones eléctricas"));
-                recs.AddRange(await FindComplements(new[] { "ADAPTADOR ENCHUFE" }, "Compatibilidad con tomas de corriente"));
+                tasks.Add(FindComplements(new[] { "SUPRESOR", "PICO" }, "Protección esencial contra fluctuaciones eléctricas"));
+                tasks.Add(FindComplements(new[] { "ADAPTADOR ENCHUFE" }, "Compatibilidad con tomas de corriente"));
             }
-            // 🌐 HÁBITAT 10: REDES (Cable UTP, Patch Cord)
+            // 🌐 HÁBITAT 10: REDES
             else if (ContainsAny(name, "CABLE RED", "UTP", "PATCH CORD", "CAT5", "CAT6"))
             {
-                recs.AddRange(await FindComplements(new[] { "CONECTOR", "RJ45" }, "Insumos necesarios para el cableado"));
-                recs.AddRange(await FindComplements(new[] { "SWITCH", "ROUTER" }, "Expande tu red si necesitas más puntos"));
+                tasks.Add(FindComplements(new[] { "CONECTOR", "RJ45" }, "Insumos necesarios para el cableado"));
+                tasks.Add(FindComplements(new[] { "SWITCH", "ROUTER" }, "Expande tu red si necesitas más puntos"));
             }
             // 🎧 HÁBITAT 11: AUDIO / HEADSET
             else if (ContainsAny(name, "HEADSET", "AUDIFONO", "AURICULAR", "MICROFONO"))
             {
-                recs.AddRange(await FindComplements(new[] { "SOPORTE", "STAND" }, "Cuida tus audífonos y mantén el orden del escritorio"));
-                recs.AddRange(await FindComplements(new[] { "ADAPTADOR AUDIO", "SPLITTER", "CABLE" }, "Mayor compatibilidad con PC y consolas"));
-                recs.AddRange(await FindComplements(new[] { "CAMARA", "WEBCAM" }, "Completa tu setup de comunicación/streaming"));
+                tasks.Add(FindComplements(new[] { "SOPORTE", "STAND" }, "Cuida tus audífonos y mantén el orden del escritorio"));
+                tasks.Add(FindComplements(new[] { "ADAPTADOR AUDIO", "SPLITTER", "CABLE" }, "Mayor compatibilidad con PC y consolas"));
+                tasks.Add(FindComplements(new[] { "CAMARA", "WEBCAM" }, "Completa tu setup de comunicación/streaming"));
             }
 
-            return recs;
+            // WAIT for all tasks
+            var resultsArray = await Task.WhenAll(tasks);
+            var allCandidates = resultsArray.SelectMany(x => x).ToList();
+
+            if (!allCandidates.Any()) return new List<ProductDto>();
+
+            // Distinct candidates by ID to avoid enriching duplicates
+            var uniqueCandidates = allCandidates
+                .GroupBy(p => p.Id)
+                .Select(g => g.First())
+                .ToList();
+
+            // SINGLE BATCH ENRICHMENT
+            await EnrichProductsWithStockAsync(uniqueCandidates);
+
+            // POST-ENRICHMENT FILTERING
+            // We need to re-apply the strategy constraints (like count) here ideally, 
+            // but simpler approach: Filter valid stock/service, then return.
+            
+            var finalRecs = uniqueCandidates
+                .Where(p => p.Stock > 0 || p.EsServicio)
+                .ToList();
+
+            // GLOBAL SAFETY FILTER: Don't recommend printer supplies for non-printers
+            // This replaces the specific filters we lost during parallelization
+            if (!ContainsAny(name, "IMPRESORA", "MULTIFUNCIONAL", "PLOTTER"))
+            {
+                finalRecs.RemoveAll(r => ContainsAny(r.Nombre, "TINTA", "CARTUCHO", "TONER", "CINTA MATRICIAL", "CABEZAL"));
+            }
+
+            return finalRecs;
         }
 
         private string GenerateSalesArgument(string mainProduct, string recommendedProduct)
@@ -448,46 +464,46 @@ namespace ProductRecommender.Backend.Services
 
         private async Task<List<ProductDto>> FindComplements(string[] searchTerms, string reason, int count = 1)
         {
-            var foundProducts = new List<ProductDto>();
-            
-            foreach (var term in searchTerms)
+            // Create a new scope for thread safety during parallel execution
+            using (var scope = _serviceScopeFactory.CreateScope())
             {
-                // Fetch CANDIDATES first 
-                var candidatesRaw = await _context.Productos
-                    .AsNoTracking()
-                    .Where(p => !p.Inactivo && (p.Servicio == false || term.Contains("SERVICIO") || term.Contains("INSTALACION") || term.Contains("FORMATEO") || term.Contains("MANTENIMIENTO") || term.Contains("LIMPIEZA")) &&
-                                EF.Functions.ILike(p.Nombre, $"%{term}%"))
-                    .OrderByDescending(p => p.EcomPrecio) // Strategy: Recommend expensive/premium first
-                    .Take(50) 
-                    .Select(p => new ProductDto 
-                    {
-                        Id = p.Id,
-                        Codigo = p.Codigo,
-                        Nombre = p.Nombre,
-                        Descripcion = p.Descripcion,
-                        EcomPrecio = p.EcomPrecio,
-                        Razon = reason, 
-                        EsServicio = p.Servicio,
-                        Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
-                    })
-                    .ToListAsync();
-
-                if (candidatesRaw.Any())
+                var context = scope.ServiceProvider.GetRequiredService<UpgradedbContext>();
+                var foundProducts = new List<ProductDto>();
+                
+                foreach (var term in searchTerms)
                 {
-                    // Enrich batch with stock
-                    await EnrichProductsWithStockAsync(candidatesRaw);
-                    
-                    // Filter those with stock > 0 OR if it is a service
-                    var available = candidatesRaw.Where(p => p.Stock > 0 || p.EsServicio).Take(count).ToList();
-                    
-                    foundProducts.AddRange(available);
-                    
-                    if (foundProducts.Count >= count) break;
+                    // Fetch CANDIDATES using the local context
+                    var candidatesRaw = await context.Productos
+                        .AsNoTracking()
+                        .Where(p => !p.Inactivo && (p.Servicio == false || term.Contains("SERVICIO") || term.Contains("INSTALACION") || term.Contains("FORMATEO") || term.Contains("MANTENIMIENTO") || term.Contains("LIMPIEZA")) &&
+                                    EF.Functions.ILike(p.Nombre, $"%{term}%"))
+                        .OrderByDescending(p => p.EcomPrecio) // Strategy: Recommend expensive/premium first
+                        .Take(20) // Reduced further for initial fetch
+                        .Select(p => new ProductDto 
+                        {
+                            Id = p.Id,
+                            Codigo = p.Codigo,
+                            Nombre = p.Nombre,
+                            Descripcion = p.Descripcion,
+                            EcomPrecio = p.EcomPrecio,
+                            Razon = reason, 
+                            EsServicio = p.Servicio,
+                            Features = ExtractFeatures(p.EcommerceDescrip ?? p.Descripcion ?? "")
+                        })
+                        .ToListAsync();
+
+                    if (candidatesRaw.Any())
+                    {
+                        // DO NOT ENRICH HERE. Just add to list.
+                        foundProducts.AddRange(candidatesRaw.Take(count * 2));
+                        
+                        if (foundProducts.Count >= count * 3) break; // heuristic limit
+                    }
                 }
+                
+                // Return raw candidates
+                return foundProducts;
             }
-            
-            // Limit total per call
-            return foundProducts.Take(count).ToList();
         }
 
         public async Task<IEnumerable<ProductDto>> GetSeasonalRecommendationsAsync(int month, int limit = 5)
