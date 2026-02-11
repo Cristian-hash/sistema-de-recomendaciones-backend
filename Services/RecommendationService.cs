@@ -37,7 +37,7 @@ namespace ProductRecommender.Backend.Services
             _mlService = mlService;
         }
 
-        public async Task<IEnumerable<ProductDto>> SearchProductsAsync(string term, int limit = 100)
+        public async Task<IEnumerable<ProductDto>> SearchProductsAsync(string term, int limit = 20)
         {
             if (string.IsNullOrWhiteSpace(term)) return new List<ProductDto>();
 

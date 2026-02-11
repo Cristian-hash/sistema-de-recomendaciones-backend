@@ -170,3 +170,4 @@ C:\Users\Administrador\Desktop\Recomendador de Productos\backend\obj\Debug\net9.
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\obj\Debug\net9.0\ProductRecommender.Backend.pdb
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\obj\Debug\net9.0\ProductRecommender.Backend.genruntimeconfig.cache
 C:\Users\Administrador\Desktop\Recomendador de Productos\backend\obj\Debug\net9.0\ref\ProductRecommender.Backend.dll
+C:\Users\Administrador\Desktop\Recomendador de Productos\backend\obj\Debug\net9.0\ProductRecommender.Backend.sourcelink.json

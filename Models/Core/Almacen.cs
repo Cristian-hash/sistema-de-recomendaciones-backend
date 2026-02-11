@@ -12,4 +12,5 @@ public partial class Almacen
     public bool? Inactivo { get; set; }
 
     // public virtual ICollection<ProductoAlmacen> ProductoAlmacens { get; set; } = new List<ProductoAlmacen>();
+    // public virtual ICollection<ProductoAlmacen> ProductoAlmacens { get; set; } = new List<ProductoAlmacen>();
 }
