@@ -35,12 +35,17 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 // TEMPORARY: Enable detailed errors in Prod to debug startup issues
+// Enable detailed errors in Prod to debug startup issues
 app.UseDeveloperExceptionPage();
-// if (app.Environment.IsDevelopment())
-// {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-// }
+
+// Enable Swagger always (for Prod testing)
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Vende+ API V1");
+    // Optional: Set Swagger as the home page by uncommenting below
+    // c.RoutePrefix = string.Empty; 
+});
 
 app.UseHttpsRedirection();
 
