@@ -19,9 +19,12 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAngular",
         builder =>
         {
-            builder.WithOrigins("http://localhost:4200", "https://recomendador.upgrade.com.pe")
-                   .AllowAnyHeader()
-                   .AllowAnyMethod();
+            builder.WithOrigins(
+                "http://localhost:4200",
+                "https://recomendador.grupoupgrade.com.pe"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
         });
 });
 
@@ -31,15 +34,25 @@ builder.Services.AddDbContext<UpgradedbContext>(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
+// TEMPORARY: Enable detailed errors in Prod to debug startup issues
+app.UseDeveloperExceptionPage();
+// if (app.Environment.IsDevelopment())
+// {
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+// }
 
 app.UseHttpsRedirection();
+
+// 1. Enable Static Files (for Angular)
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseCors("AllowAngular");
-app.MapControllers(); // Added this
+app.MapControllers();
+
+// 2. Fallback to Angular's index.html for non-API routes
+app.MapFallbackToFile("index.html");
 
 var summaries = new[]
 {
