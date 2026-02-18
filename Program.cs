@@ -21,7 +21,7 @@ builder.Services.AddCors(options =>
         {
             builder.WithOrigins(
                 "http://localhost:4200",
-                "https://recomendador.grupoupgrade.com.pe"
+                "https://recomendador.upgrade.com.pe"
             )
             .AllowAnyHeader()
             .AllowAnyMethod();
